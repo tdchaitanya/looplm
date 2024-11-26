@@ -1,9 +1,9 @@
-# LoopLM - Language Models on the Command Line
+# LoopLM - Loop Language Models in your day-to-day tasks.
 
 > 🚫🚫🚫
 > This tool is still in active development
 
-`looplm` -- Command LM is a highly customisable command-line interface for interacting with various Language Models. It provides a simple and straighforward way to access state-of-the-art language models directly from your terminal.
+`looplm` -- Loop LM is a highly customisable command-line interface for interacting with various Language Models. It provides a simple and straighforward way to access state-of-the-art language models directly from your terminal and helps you leverage LLMs in your day-to-day software development workflows
 
 ## Features
 
@@ -14,9 +14,9 @@
 
 ## Quick Start
 
-1. Install LoopLM using pip:
+1. Install LoopLM using pipx:
 ```bash
-pip install looplm
+pipx install looplm
 ```
 
 2. Configure your first provider:
@@ -36,8 +36,7 @@ LoopLM is designed for developers who:
 - Work with multiple LLM providers and need a unified interface
 - Want to integrate LLM assistance into their development workflow
 
-## Requirements
+## Requirementss
 
 - Python 3.10 or higher
-- Internet connection
 - API keys for the providers you want to use
