@@ -10,12 +10,10 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
 lib/
-lib64/
 parts/
 sdist/
 var/
@@ -24,23 +22,14 @@ share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
-
+*.py[cod]
+.ipynb_checkpoints/
+*.egg-info/
+.env
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
 .coverage.*
 .cache
 nosetests.xml
@@ -77,6 +66,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+notebooks
 
 # IPython
 profile_default/

@@ -1,0 +1,52 @@
+[tool.poetry]
+name = "looplm"
+version = "0.1.0"
+description = "Loop-LM: Tool to access LLMs from the command line"
+authors = ["Chaitanya Devaguptapu <tdchaitanya@gmail.com>"]
+readme = "README.md"
+packages = [{include = "looplm", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+litellm = "^1.52.3"
+click = "^8.1.7"
+rich = "^13.9.4"
+cryptography = "^43.0.3"
+boto3 = "^1.35.57"
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.5.44"
+mkdocstrings = {extras = ["python"], version = "^0.27.0"}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+black = "^24.10.0"
+isort = "^5.13.2"
+flake8 = "^7.1.1"
+mypy = "^1.13.0"
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.5.44"
+ipykernel = "^6.29.5"
+pytest-cov = "^6.0.0"
+pytest-mock = "^3.14.0"
+pre-commit = "^4.0.1"
+pytest-benchmark = "^5.1.0"
+memory-profiler = "^0.61.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+looplm = "looplm.cli.main:main"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test"]
+python_functions = ["test_*"]
+addopts = "-v --cov=looplm --cov-report=term-missing"

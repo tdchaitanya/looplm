@@ -1,10 +1,9 @@
-# LoopLM - Loop Language Models in your day-to-day tasks.
+# LoopLM - Language Models on the Command Line
 
-> [!WARNING]
->
-> This tool is still in active development!
+> 🚫🚫🚫
+> This tool is still in active development
 
-LoopLM is a highly customisable tool for interacting with various Language Models. It provides a simple and straighforward way to access state-of-the-art language models directly from your terminal and helps you leverage LLMs in your day-to-day software development workflows
+`looplm` -- Command LM is a highly customisable command-line interface for interacting with various Language Models. It provides a simple and straighforward way to access state-of-the-art language models directly from your terminal.
 
 ## Features
 
