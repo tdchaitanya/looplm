@@ -4,6 +4,7 @@ import sys
 from rich.console import Console
 from rich.table import Table
 from .setup import initial_setup
+from ..chat.commands import CommandHandler
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
 from ..conversation.handler import ConversationHandler
@@ -45,7 +46,28 @@ def cli(prompt, provider, model, configure, reset, reset_provider, set_default, 
     if configure:
         initial_setup()
         return
+    
+    #chat mode
+    if prompt and prompt[0] == "chat":
+        try:
+            handler = CommandHandler(provider=provider, model=model)
+            handler.start_session()
 
+            if prompt:
+                if handler.session_manager.active_session:
+                    handler.session_manager.active_session.send_message(
+                        prompt,
+                        stream=True,
+                        show_tokens=False
+                    )
+                else:
+                    console.print("\nNo active session to process prompt", style="bold red")
+        except Exception as e:
+            console.print(f"\nFailed to process request: {str(e)}", style="bold red")
+            raise click.Abort()
+        
+        return
+    
     if reset:
         if click.confirm("Are you sure you want to reset all configuration?"):
             config_manager.reset_all()

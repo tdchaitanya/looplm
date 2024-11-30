@@ -33,12 +33,12 @@ class ConversationHandler:
 
     def _setup_environment(self, provider: ProviderType) -> None:
         """Set up environment variables for the specified provide"""
-        for key in list(os.environ.keys()):
-            if any(
-                key.startswith(p)
-                for p in ["ANTHROPIC_", "OPENAI_", "AZURE_", "AWS_", "GEMINI_"]
-            ):
-                del os.environ[key]
+        # for key in list(os.environ.keys()):
+        #     if any(
+        #         key.startswith(p)
+        #         for p in ["ANTHROPIC_", "OPENAI_", "AZURE_", "AWS_", "GEMINI_"]
+        #     ):
+        #         del os.environ[key]
 
         credentials = self.config_manager.get_provider_credentials(provider)
         for key, value in credentials.items():
