@@ -168,6 +168,38 @@ class ChatSession:
         self.messages.insert(0, Message("system", prompt))
         self.updated_at = datetime.now()
 
+    def set_model(self, model_name: str, provider_name: Optional[str] = None) -> None:
+        """Set the model and optionally the provider for this session."""
+        if provider_name:
+            try:
+                # Handle both standard and custom providers
+                try:
+                    provider = ProviderType(provider_name)
+                except ValueError:
+                    # Check if this is a custom provider
+                    providers = self.config_manager.get_configured_providers()
+                    other_config = providers.get(ProviderType.OTHER, {})
+                    if (
+                        other_config
+                        and other_config.get("provider_name") == provider_name
+                    ):
+                        provider = ProviderType.OTHER
+                        self.custom_provider = provider_name
+                    else:
+                        raise ValueError(f"Invalid provider: {provider_name}")
+
+                # Validate provider is configured
+                self._get_provider_config(provider)
+                self.provider = provider
+                self.model = model_name
+            except Exception as e:
+                raise ValueError(f"Error setting provider: {str(e)}")
+        else:
+            # Just update the model for current provider
+            self.model = model_name
+
+        self.updated_at = datetime.now()
+
     def get_system_prompt(self) -> Optional[str]:
         """Get current system prompt"""
         system_messages = [msg for msg in self.messages if msg.role == "system"]

@@ -16,9 +16,9 @@
 
 ## Quick Start
 
-1. Install LoopLM using pip (use pipx if you want use it system-wide):
+1. Install LoopLM ([pipx](https://github.com/pypa/pipx) is recommended):
 ```bash
-pip install looplm
+pipx install looplm
 ```
 
 2. Configure your first provider:

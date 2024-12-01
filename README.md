@@ -21,11 +21,12 @@ LoopLM is a highly customisable command line tool that seamlessly integrates var
 - 🚀 **Support for multiple LLM providers**: Works with OpenAI, Anthropic, Google Gemini, Azure OpenAI, AWS Bedrock, and other providers through [LiteLLM](https://litellm.vercel.app/docs/providers) integration. You can easily switch between different providers and models
 - 🔒 **Secure Configuration**: All API keys and credentials are stored securely using encryption
 - 💻 **Simple CLI**: Intuitive command-line interface for quick access to LLMs and pipe support for integration with Unix tools
+- 💬 **Interactive Chat Mode**: Engage in persistent, interactive conversations with your preferred LLM using looplm chat
 - 🔍 **Rich Output**: Beautiful terminal output with markdown support
 
 ## Quick Start
 
-1. Install LoopLM using pipx:
+1. Install LoopLM ([pipx](https://github.com/pypa/pipx) is recommended):
 ```bash
 pipx install looplm
 ```
