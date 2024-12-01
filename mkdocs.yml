@@ -47,7 +47,9 @@ nav:
   - Getting Started:
     # - Installation: installation.md
     - Configuration: configuration.md
-    - Usage: usage.md
+    - Usage:
+      - Command Line: direct-usage.md
+      - Chat Mode: chat-usage.md
   # - API Reference: api.md
 
 plugins:
