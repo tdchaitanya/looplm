@@ -46,8 +46,8 @@ def cli(prompt, provider, model, configure, reset, reset_provider, set_default, 
     if configure:
         initial_setup()
         return
-    
-    #chat mode
+
+    # chat mode
     if prompt and prompt[0] == "chat":
         try:
             handler = CommandHandler(provider=provider, model=model)
@@ -56,18 +56,16 @@ def cli(prompt, provider, model, configure, reset, reset_provider, set_default, 
             if prompt:
                 if handler.session_manager.active_session:
                     handler.session_manager.active_session.send_message(
-                        prompt,
-                        stream=True,
-                        show_tokens=False
+                        prompt, stream=True, show_tokens=False
                     )
                 else:
                     console.print("\nSession Closed", style="bold red")
         except Exception as e:
             console.print(f"\nFailed to process request: {str(e)}", style="bold red")
             raise click.Abort()
-        
+
         return
-    
+
     if reset:
         if click.confirm("Are you sure you want to reset all configuration?"):
             config_manager.reset_all()
