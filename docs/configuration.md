@@ -93,15 +93,48 @@ Reset specific provider:
 looplm --reset-provider anthropic
 ```
 
+## Using Different Providers
+
+### In Direct Prompts
+```bash
+# Use specific provider
+looplm --provider anthropic "Explain quantum computing"
+
+# Use specific model
+looplm --provider openai --model gpt-4 "Write a regex pattern"
+```
+
+### In Chat Mode
+```bash
+# Start chat with specific provider
+looplm chat --provider anthropic
+
+# Start chat with specific model
+looplm chat --provider openai --model gpt-4o-mini
+```
+
 ## Configuration Storage
 
 LoopLM stores configuration in two locations in your home directory:
 
 1. `.looplm/config.json`: General configuration (non-sensitive)
 2. `.looplm/secrets.enc`: Encrypted API keys and credentials
+3. `.looplm/sessions/`: Saved chat sessions
+4. `.looplm/prompts/`: System prompts
 
 The configuration is encrypted using Fernet symmetric encryption, ensuring your API keys remain secure.
 
 ## Additional Environment Variables
 
 When configuring a provider, you can set additional environment variables that might be required for your specific use case. These will be stored securely with your other credentials.
+
+## Managing System Prompts
+
+In chat mode, you can manage system prompts that define the assistant's behavior:
+
+1. View current prompt: `/system`
+2. Create new prompt: Use the system command menu
+3. Save prompts for reuse: Save option in system menu
+4. Load saved prompts: Load option in system menu
+
+This allows you to customize the assistant's behavior for different use cases.

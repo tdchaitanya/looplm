@@ -4,6 +4,7 @@ import sys
 from rich.console import Console
 from rich.table import Table
 from .setup import initial_setup
+from ..chat.commands import CommandHandler
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
 from ..conversation.handler import ConversationHandler
@@ -44,6 +45,25 @@ def cli(prompt, provider, model, configure, reset, reset_provider, set_default, 
     # Handle configuration commands
     if configure:
         initial_setup()
+        return
+
+    # chat mode
+    if prompt and prompt[0] == "chat":
+        try:
+            handler = CommandHandler(provider=provider, model=model)
+            handler.start_session()
+
+            if prompt:
+                if handler.session_manager.active_session:
+                    handler.session_manager.active_session.send_message(
+                        prompt, stream=True, show_tokens=False
+                    )
+                else:
+                    console.print("\nSession Closed", style="bold red")
+        except Exception as e:
+            console.print(f"\nFailed to process request: {str(e)}", style="bold red")
+            raise click.Abort()
+
         return
 
     if reset:
@@ -158,7 +178,7 @@ def show_status():
     default_provider, _ = config_manager.get_default_provider()
     providers = config_manager.get_configured_providers()
 
-    table = Table(title="Provider Status")
+    table = Table(title="Configured Providers")
     table.add_column("Provider", style="cyan")
     table.add_column("Default Model", style="green")
     table.add_column("Status", style="yellow")
@@ -172,7 +192,7 @@ def show_status():
         status = "DEFAULT" if provider == default_provider else "Configured"
         table.add_row(display_name, config["default_model"], status)
 
-    console.print("\n🤖 LoopLM Configuration Status", style="bold blue")
+    console.print("\n🔄 LoopLM", style="bold blue")
     console.print(table)
 
     console.print("\nUsage:", style="bold")
