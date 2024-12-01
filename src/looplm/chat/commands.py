@@ -70,10 +70,19 @@ class CommandHandler:
             
     def _handle_quit(self) -> bool:
         """Handle quit command"""
-        if self.session_manager.active_session:
-            if self.console.confirm_action("Save session before quitting?"):
-                self._handle_save()
-        return False
+        try:
+            if self.session_manager.active_session:
+                if self.console.confirm_action("Save session before quitting?"):
+                    self._handle_save()
+                
+                # Clear the active session before quitting
+                self.session_manager.active_session = None
+                
+            return False
+        except Exception as e:
+            self.console.display_error(f"Error during quit: {str(e)}")
+            # Force quit even if there's an error
+            return False
         
     def _handle_help(self) -> bool:
         """Handle help command"""
@@ -136,7 +145,11 @@ class CommandHandler:
                     self.console.display_message(msg.role, msg.content)
         else:
             self.console.display_error("Failed to load session")
-            
+
+        # Display provider info for loaded session
+        provider_name, model_name = self.get_provider_display_info(session)
+        self.console.display_provider_info(provider_name, model_name) 
+        
         return True
         
     def _handle_new(self) -> bool:
@@ -236,15 +249,15 @@ class CommandHandler:
         # Display current prompt
         current_prompt = session.get_system_prompt()
         self.console.display_info("\nCurrent system prompt:")
-        self.console.print(f"[dim]{current_prompt}[/dim]")
+        self.console.display_info(f"[dim]{current_prompt}[/dim]")
         
         # Show options
-        self.console.print("\nOptions:", style="bold")
-        self.console.print("1. Use saved prompt")
-        self.console.print("2. Create new prompt")
-        self.console.print("3. Save current prompt")
-        self.console.print("4. Delete saved prompt")
-        self.console.print("5. Cancel")
+        self.console.display_info("\nOptions:", style="bold")
+        self.console.display_info("1. Use saved prompt")
+        self.console.display_info("2. Create new prompt")
+        self.console.display_info("3. Save current prompt")
+        self.console.display_info("4. Delete saved prompt")
+        self.console.display_info("5. Cancel")
         
         choice = Prompt.ask("Select option", choices=["1", "2", "3", "4", "5"], default="5")
         
@@ -259,7 +272,7 @@ class CommandHandler:
                 preview = prompt[:50] + "..." if len(prompt) > 50 else prompt
                 table.add_row(name, preview)
                 
-            self.console.print(table)
+            self.console.display_info(table)
             
             # Select prompt
             name = Prompt.ask("Enter prompt name", default="default")
@@ -325,7 +338,16 @@ class CommandHandler:
             session.total_usage.to_dict()
         )
         return True
+    
+    def get_provider_display_info(self, session: ChatSession) -> tuple[str, str]:
+        """Get display-friendly provider name and model"""
+        if session.provider == ProviderType.OTHER and session.custom_provider:
+            return session.custom_provider, session.model
             
+        provider_config = self.config_manager.get_configured_providers().get(session.provider, {})
+        provider_name = self.config_manager.get_provider_display_name(session.provider, provider_config)
+        return provider_name, session.model
+                
     def start_session(self):
         """Start new chat session"""
         # Check for configured providers
@@ -345,7 +367,8 @@ class CommandHandler:
             # Set default system prompt
             default_prompt = self.prompts_manager.get_prompt("default")
             session.set_system_prompt(default_prompt)
-            
+
+        # self.console.display_info(f"Using {self.session_manager.active_session.model} from {self.session_manager.active_session.provider.name}", style="white")
         # Main chat loop
         while True:
             try:
@@ -407,7 +430,10 @@ class CommandHandler:
                 session.model = model
                 if provider_type == ProviderType.OTHER:
                     session.custom_provider = custom_provider
-                    
+
+                provider_name, model_name = self.get_provider_display_info(session)
+                self.console.display_provider_info(provider_name, model_name)              
+            
             except Exception as e:
                 self.console.display_error(f"Error setting provider: {str(e)}")
                 # Fall back to defaults
@@ -415,14 +441,23 @@ class CommandHandler:
                 session.provider = provider
                 session.model = model
                 session.custom_provider = custom_provider
-        
+
+                provider_name, model_name = self.get_provider_display_info(session)
+                self.console.display_provider_info(provider_name, model_name)
         elif self.override_model:
-            # If only model is overridden, keep default provider
             provider, _, custom_provider = session._get_provider_and_model()
             session.provider = provider
             session.model = self.override_model
             session.custom_provider = custom_provider
-            
+
+            provider_name, model_name = self.get_provider_display_info(session)
+            self.console.display_provider_info(provider_name, model_name)
+
+        else:
+            # Display default provider info
+            provider_name, model_name = self.get_provider_display_info(session)
+            self.console.display_provider_info(provider_name, model_name)
+
         return session
     
     def _get_provider_config(self, provider: ProviderType) -> dict:

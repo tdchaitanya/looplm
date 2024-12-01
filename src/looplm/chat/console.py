@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.prompt import Prompt, Confirm
 from rich.markdown import Markdown
 from datetime import datetime
+from ..config.manager import ConfigManager
 
 class ChatConsole:
     """Handles chat UI rendering and interaction"""
@@ -23,39 +24,53 @@ class ChatConsole:
         
     def display_welcome(self):
         """Display welcome message and instructions"""
-        logo = """
-        [blue]╭──────────────────────────────────────╮
-        │                                          │
-        │  [white]LoopLM Chat[/white] - Interactive Session    │
-        │                                          │
-        ╰──────────────────────────────────────────╯[/blue]
-        """
+        config_manager = ConfigManager()
+        default_provider, _ = config_manager.get_default_provider()
+        providers = config_manager.get_configured_providers()
 
-        help_text = """
-        [bright_cyan]Commands:[/bright_cyan]
-        [dim white]• /quit or /q    - Exit chat session
-        • /help or /h    - Show this help message
-        • /clear or /c   - Clear chat history
-        • /save          - Save current session
-        • /load          - Load a saved session
-        • /new           - Start a new session
-        • /list          - List saved sessions
-        • /delete        - Delete a session
-        • /rename        - Rename current session
-        • /model         - Change model
-        • /system        - View/update system prompt
-        • /usage         - View token usage[/dim white]
-        """
+        table = Table(title="Configured Providers")
+        table.add_column("Provider", style="cyan")
+        table.add_column("Default Model", style="green")
+        table.add_column("Status", style="yellow")
 
-        panel = Panel(
-            Align.center(Text.from_markup(f"{logo}\n{help_text}"), vertical="middle"),
-            border_style="bright_blue",
-            padding=(1, 2),
-        )
+        for provider, config in providers.items():
+            display_name = config_manager.get_provider_display_name(provider, config)
+            status = "DEFAULT" if provider == default_provider else "Configured"
+            table.add_row(display_name, config["default_model"], status)
 
-        self.console.print()
-        self.console.print(panel)
-        self.console.print()
+        self.console.print("\n💬 LoopLM Chat", style="bold blue")
+        self.console.print(table)
+
+        commands = {"/help or /h":"Show this help message", 
+                    "/clear or /c": "Clear chat history", 
+                    "/save": "Save current session", 
+                    "/load": "Load a saved session", 
+                    "/new": "Start a new session", 
+                    "/list": "List saved sessions", 
+                    "/delete": "Delete a session", 
+                    "/rename": "Rename current session", 
+                    "/model": "Change model", 
+                    "/system": "View/update system prompt",
+                    "/usage": "View token usage"}
+
+        table = Table(title="Available Commands")
+        table.add_column("command", style="cyan")
+        table.add_column("description", style="yellow")
+
+        for cmd, desc in commands.items():
+            table.add_row(cmd, desc)
+        
+        self.console.print(table)
+
+        # panel = Panel(
+        #     Align.center(Text.from_markup(f"{logo}\n{help_text}"), vertical="middle"),
+        #     border_style="bright_blue",
+        #     padding=(1, 2),
+        # )
+
+        # self.console.print()
+        # self.console.print(panel)
+        # self.console.print()
         
     def display_sessions(self, sessions: List[Dict]):
         """Display list of available chat sessions"""
@@ -93,7 +108,14 @@ class ChatConsole:
         table.add_row("Total Tokens", f"{usage['total_tokens']:,}")
         
         self.console.print(table)
-        
+    
+    def display_provider_info(self, provider_name: str, model_name: str):
+        """Display current provider and model information"""
+        self.console.print(
+            f"\n Using [bright_green]{model_name}[/bright_green] from [bright_cyan]{provider_name}[/bright_cyan]"
+        )
+        self.console.print()  # Add a blank line for better spacing
+
     def confirm_action(self, message: str) -> bool:
         """Get user confirmation for an action"""
         return Confirm.ask(message)
@@ -172,6 +194,6 @@ class ChatConsole:
         """Display success message"""
         self.console.print(message, style="bold green")
         
-    def display_info(self, message: str):
+    def display_info(self, message: str, style:  Optional[str] = "blue"):
         """Display info message"""
-        self.console.print(message, style="blue")
+        self.console.print(message, style=style)

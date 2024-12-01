@@ -61,7 +61,7 @@ def cli(prompt, provider, model, configure, reset, reset_provider, set_default, 
                         show_tokens=False
                     )
                 else:
-                    console.print("\nNo active session to process prompt", style="bold red")
+                    console.print("\nSession Closed", style="bold red")
         except Exception as e:
             console.print(f"\nFailed to process request: {str(e)}", style="bold red")
             raise click.Abort()
@@ -180,7 +180,7 @@ def show_status():
     default_provider, _ = config_manager.get_default_provider()
     providers = config_manager.get_configured_providers()
 
-    table = Table(title="Provider Status")
+    table = Table(title="Configured Providers")
     table.add_column("Provider", style="cyan")
     table.add_column("Default Model", style="green")
     table.add_column("Status", style="yellow")
@@ -194,7 +194,7 @@ def show_status():
         status = "DEFAULT" if provider == default_provider else "Configured"
         table.add_row(display_name, config["default_model"], status)
 
-    console.print("\n🤖 LoopLM Configuration Status", style="bold blue")
+    console.print("\n🔄 LoopLM", style="bold blue")
     console.print(table)
 
     console.print("\nUsage:", style="bold")
