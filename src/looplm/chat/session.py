@@ -3,7 +3,8 @@ from typing import Optional, Dict, List
 from datetime import datetime
 from dataclasses import dataclass, field
 from uuid import uuid4
-
+import os
+import gnureadline
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.live import Live
@@ -13,7 +14,7 @@ from rich.style import Style
 from litellm import completion
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
-
+from ..preprocessor.files import FilePreprocessor
 
 @dataclass
 class TokenUsage:
@@ -97,6 +98,10 @@ class ChatSession:
     provider: Optional[ProviderType] = None
     model: Optional[str] = None
     custom_provider: Optional[str] = None
+
+    file_preprocessor: FilePreprocessor = field(
+        default_factory=lambda: FilePreprocessor(base_path=os.getcwd())
+    )
 
     def __post_init__(self):
         """Initialize after creation"""
@@ -254,15 +259,33 @@ class ChatSession:
     def send_message(
         self, content: str, stream: bool = True, show_tokens: bool = False
     ) -> str:
-        """Send a message and get response"""
-        # Add user message
-        user_msg = Message("user", content)
-        self.messages.append(user_msg)
+        """
+        Send a message and get response.
 
-        # Setup environment
-        self.config_manager._prepare_environment(self.provider.value)
+        Handles file inclusions in the message using @file directives before sending
+        to the model.
 
+        Args:
+            content: Message content, may contain @file directives
+            stream: Whether to stream the response
+            show_tokens: Whether to show token usage
+
+        Returns:
+            str: Model's response
+
+        Raises:
+            Exception: If there's an error sending the message or processing files
+        """
         try:
+            processed_content = self.file_preprocessor.process_prompt(content)
+
+            # Add user message
+            user_msg = Message("user", processed_content)
+            self.messages.append(user_msg)
+
+            # Setup environment
+            self.config_manager._prepare_environment(self.provider.value)
+
             # Prepare model name
             actual_model = self.model
             if self.provider == ProviderType.OTHER and self.custom_provider:
@@ -279,8 +302,19 @@ class ChatSession:
             else:
                 return self._handle_normal_response(actual_model, messages, show_tokens)
 
+        except FileNotFoundError as e:
+            # Handle file not found errors specifically
+            error_msg = f"Error processing file inclusion: {str(e)}"
+            self.console.print(error_msg, style="bold red")
+            raise Exception(error_msg)
+
         except Exception as e:
             raise Exception(f"Error sending message: {str(e)}")
+
+    def __del__(self):
+        """Cleanup when session is destroyed."""
+        if hasattr(self, 'file_preprocessor'):
+            self.file_preprocessor.cleanup()
 
     def _handle_streaming_response(
         self, model: str, messages: List[Dict], show_tokens: bool = False

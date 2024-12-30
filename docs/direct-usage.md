@@ -9,13 +9,6 @@ This guide covers using LoopLM for quick, one-off interactions with language mod
 ```bash
 # Basic query
 looplm "Write a Python function to calculate factorial"
-
-# Multi-line prompt
-looplm "Review this code:
-def factorial(n):
-    if n == 0:
-        return 1
-    return n * factorial(n-1)"
 ```
 
 ### Provider Selection
@@ -32,6 +25,21 @@ looplm --provider openai --model gpt-4o-mini "Write unit tests for a login funct
 
 ### File Input
 
+LoopLM supports several ways to include file contents in your prompts:
+
+1. Using @file directive:
+```bash
+# Using quoted path
+looplm "Explain this code: @file(\"src/main.py\")"
+
+# Using space-separated path
+looplm "Review this configuration: @file config/settings.yml"
+
+# Using absolute paths
+looplm "Analyze this log: @file(/var/log/app.log)"
+```
+
+2. Using command substitution (traditional method):
 ```bash
 # Pass file content
 looplm "Explain this code: $(cat script.py)"
@@ -40,7 +48,14 @@ looplm "Explain this code: $(cat script.py)"
 looplm "Compare these implementations: $(cat impl1.py) vs $(cat impl2.py)"
 ```
 
+The @file directive supports:
+- Text files (code, logs, config files, etc.)
+- Common document formats (PDF, Word, Excel, etc.) through automatic conversion
+- Both relative and absolute paths
+- Multiple file inclusions in a single prompt
+
 ### Pipe Input
+
 
 ```bash
 # Pipe error output
@@ -58,17 +73,17 @@ git diff | looplm "Summarize these changes"
 ### Code Tasks
 
 ```bash
-# Code generation
-looplm "Write a Python script to process CSV files"
+# Code review with file directive
+looplm "Review this implementation: @file(src/auth.py)"
 
-# Code review
-cat pull_request.diff | looplm "Review these changes"
+# Documentation with multiple files
+looplm "Write documentation for this module: @file(src/module.py) and its tests @file(tests/test_module.py)"
 
 # Bug fixing
-looplm "Fix this bug: $(cat buggy_code.py)"
+looplm "Fix this buggy code: @file(src/buggy.py)"
 
-# Documentation
-looplm "Write a docstring for: $(cat function.py)"
+# Code analysis
+looplm "Analyze the complexity of this function: @file(src/complex_function.py)"
 ```
 
 ### Development Support

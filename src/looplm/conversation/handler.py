@@ -8,8 +8,10 @@ from rich.text import Text
 from rich.panel import Panel
 from rich.style import Style
 from litellm import completion
+from litellm.utils import trim_messages
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
+from ..preprocessor.files import FilePreprocessor
 
 
 class ConversationHandler:
@@ -25,6 +27,12 @@ class ConversationHandler:
             self.console = console
             self.console.width = None
         self.config_manager = ConfigManager()
+        self.file_preprocessor = FilePreprocessor(base_path=os.getcwd())
+
+    def __del__(self):
+        """Cleanup when handler is destroyed."""
+        if hasattr(self, 'file_preprocessor'):
+            self.file_preprocessor.cleanup()
 
     def _get_provider_config(self, provider: ProviderType) -> dict:
         """Get full provider configuration including custom name if it's OTHER type"""
@@ -114,15 +122,28 @@ class ConversationHandler:
     def handle_prompt(
         self, prompt: str, provider: Optional[str] = None, model: Optional[str] = None
     ) -> None:
-        """Handle a user prompt and stream the response"""
+        """
+        Handle a user prompt and stream the response.
+
+        The prompt may contain @file directives which will be processed before sending
+        to the LLM provider.
+
+        Args:
+            prompt: User prompt, possibly containing @file directives
+            provider: Optional provider override
+            model: Optional model override
+        """
         try:
+
+            processed_prompt = self.file_preprocessor.process_prompt(prompt)
+
             provider_type, model_name, custom_provider = self._get_provider_and_model(
                 provider, model
             )
 
             self._setup_environment(provider_type)
 
-            messages = [{"role": "user", "content": prompt}]
+            messages = [{"role": "user", "content": processed_prompt}]
 
             with Live(
                 "", refresh_per_second=4, console=self.console, auto_refresh=True
@@ -135,7 +156,9 @@ class ConversationHandler:
                     actual_model = f"{custom_provider}/{model_name}"
 
                 response = completion(
-                    model=actual_model, messages=messages, stream=True
+                    model=actual_model,
+                    messages=trim_messages(messages),
+                    stream=True
                 )
 
                 for chunk in response:

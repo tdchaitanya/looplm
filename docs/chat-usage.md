@@ -114,6 +114,67 @@ System prompts allow you to give a role to the langiage model, for more details 
 
 > Can you help me break this down into smaller tasks?
 ```
+## File Integration
+
+LoopLM supports including file contents directly in your chat messages using the @file directive:
+
+### Syntax Options
+
+```bash
+# Three ways to include files:
+
+# 1. Quoted path
+> Let's review this code: @file("src/main.py")
+
+# 2. Space-separated path
+> Check this configuration: @file config/settings.yml
+
+# 3. Using absolute paths
+> Analyze this log: @file(logs/error.log)
+```
+
+### Use Cases with Files
+
+#### Code Review Sessions
+
+```bash
+> I want to review our authentication module: @file("src/auth/auth.py")
+
+> Now let's look at its tests: @file("tests/auth/test_auth.py")
+
+> Can we compare it with the new implementation? @file("src/auth/auth_v2.py")
+```
+
+#### Configuration Review
+
+```bash
+> Please review these configurations:
+
+> Here's our production config: @file("config/prod.yml")
+> And staging config: @file("config/staging.yml")
+
+> What are the key differences?
+```
+
+#### Log Analysis
+
+```bash
+> Can you help me understand this error?
+> @file(/var/log/app/error.log)
+
+> And here's the related configuration: @file("config/logging.yml")
+```
+
+#### Documentation Work
+
+```bash
+> I need to document this module:
+> @file("src/core/module.py")
+
+> It uses these utilities: @file("src/utils/helpers.py")
+
+> Can you help me write comprehensive documentation?
+```
 
 ## Workflow Examples
 
