@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.46">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
     
     
       
@@ -592,10 +592,12 @@ This tool is still in active development</p>
 <h2 id="features">Features</h2>
 <ul>
 <li>🚀 <strong>Support for multiple LLM providers</strong>: Works with OpenAI, Anthropic, Google Gemini, Azure OpenAI, AWS Bedrock, and other providers through <a href="https://litellm.vercel.app/docs/providers">LiteLLM</a> integration. You can easily switch between different providers and models</li>
+<li>📂 <strong>File Integration</strong>: Include files directly in your prompts using @file directives, supporting code files, logs, configurations, and even PDFs and documents</li>
 <li>🔒 <strong>Secure Configuration</strong>: All API keys and credentials are stored securely using encryption</li>
 <li>💻 <strong>Simple CLI</strong>: Intuitive command-line interface for quick access to AI capabilities</li>
 <li>💬 <strong>Interactive Chat Mode</strong>: Engage in persistent, interactive conversations with your preferred LLM using looplm chat</li>
 <li>🔍 <strong>Rich Output</strong>: Beautiful terminal output with markdown support</li>
+<li>🔍 <strong>Smart Context</strong>: Maintain conversation context and system prompts for consistent interactions</li>
 </ul>
 <h2 id="quick-start">Quick Start</h2>
 <ol>
@@ -610,8 +612,15 @@ This tool is still in active development</p>
 </code></pre></div></p>
 </li>
 <li>
-<p>Start using the CLI:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>looplm<span class="w"> </span><span class="s2">&quot;Write a function to calculate fibonacci numbers in Python&quot;</span>
+<p>Start using the CLI with direct file support:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Review code with file directive</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>looplm<span class="w"> </span><span class="s2">&quot;Review this code: @file(src/main.py)&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Compare implementations</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>looplm<span class="w"> </span><span class="s2">&quot;Compare these files: @file(v1.py) vs @file(v2.py)&quot;</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Analyze logs</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>looplm<span class="w"> </span><span class="s2">&quot;Check this log: @file(/var/log/app.log)&quot;</span>
 </code></pre></div></p>
 </li>
 <li>
@@ -623,13 +632,19 @@ This tool is still in active development</p>
 <h2 id="why-looplm">Why LoopLM?</h2>
 <p>LoopLM is designed for developers who:
 - Want quick access to LLMs without leaving the terminal
+- Need to frequently analyze code, logs, and configuration files
 - Work with multiple LLM providers and need a unified interface
-- Want to integrate LLM assistance into their development workflow</p>
+- Want to integrate LLM assistance into their development workflow
+- Need to maintain context across development sessions</p>
 <h2 id="requirementss">Requirementss</h2>
 <ul>
 <li>Python 3.10 or higher</li>
 <li>API keys for the providers you want to use</li>
 </ul>
+<p>For detailed usage instructions, see:
+- <a href="direct-usage/">Direct Usage Guide</a>
+- <a href="chat-usage/">Chat Mode Guide</a>
+- <a href="configuration/">Configuration Guide</a></p>
 
 
 
@@ -685,7 +700,7 @@ This tool is still in active development</p>
     <script id="__config" type="application/json">{"base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="assets/javascripts/bundle.83f73b43.min.js"></script>
+      <script src="assets/javascripts/bundle.88dd0f4e.min.js"></script>
       
     
   </body>

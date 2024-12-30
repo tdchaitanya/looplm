@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.46">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.49">
     
     
       
@@ -561,6 +561,81 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#file-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Integration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Syntax Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-cases-with-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Use Cases with Files
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Use Cases with Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#code-review-sessions_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Review Sessions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Review
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#log-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      Log Analysis
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation Work
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#workflow-examples" class="md-nav__link">
     <span class="md-ellipsis">
       Workflow Examples
@@ -794,6 +869,81 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#file-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Integration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="File Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Syntax Options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-cases-with-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      Use Cases with Files
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Use Cases with Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#code-review-sessions_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Review Sessions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Review
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#log-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      Log Analysis
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#documentation-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      Documentation Work
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#workflow-examples" class="md-nav__link">
     <span class="md-ellipsis">
       Workflow Examples
@@ -965,57 +1115,101 @@
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>&gt; Can you help me break this down into smaller tasks?
 </code></pre></div>
+<h2 id="file-integration">File Integration</h2>
+<p>LoopLM supports including file contents directly in your chat messages using the @file directive:</p>
+<h3 id="syntax-options">Syntax Options</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Three ways to include files:</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># 1. Quoted path</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>&gt;<span class="w"> </span>Let<span class="err">&#39;</span>s<span class="w"> </span>review<span class="w"> </span>this<span class="w"> </span>code:<span class="w"> </span>@file<span class="o">(</span><span class="s2">&quot;src/main.py&quot;</span><span class="o">)</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># 2. Space-separated path</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>&gt;<span class="w"> </span>Check<span class="w"> </span>this<span class="w"> </span>configuration:<span class="w"> </span>@file<span class="w"> </span>config/settings.yml
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1"># 3. Using absolute paths</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>&gt;<span class="w"> </span>Analyze<span class="w"> </span>this<span class="w"> </span>log:<span class="w"> </span>@file<span class="o">(</span>logs/error.log<span class="o">)</span>
+</code></pre></div>
+<h3 id="use-cases-with-files">Use Cases with Files</h3>
+<h4 id="code-review-sessions_1">Code Review Sessions</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>&gt;<span class="w"> </span>I<span class="w"> </span>want<span class="w"> </span>to<span class="w"> </span>review<span class="w"> </span>our<span class="w"> </span>authentication<span class="w"> </span>module:<span class="w"> </span>@file<span class="o">(</span><span class="s2">&quot;src/auth/auth.py&quot;</span><span class="o">)</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>&gt;<span class="w"> </span>Now<span class="w"> </span>let<span class="err">&#39;</span>s<span class="w"> </span>look<span class="w"> </span>at<span class="w"> </span>its<span class="w"> </span>tests:<span class="w"> </span>@file<span class="o">(</span><span class="s2">&quot;tests/auth/test_auth.py&quot;</span><span class="o">)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>&gt;<span class="w"> </span>Can<span class="w"> </span>we<span class="w"> </span>compare<span class="w"> </span>it<span class="w"> </span>with<span class="w"> </span>the<span class="w"> </span>new<span class="w"> </span>implementation?<span class="w"> </span>@file<span class="o">(</span><span class="s2">&quot;src/auth/auth_v2.py&quot;</span><span class="o">)</span>
+</code></pre></div>
+<h4 id="configuration-review">Configuration Review</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>&gt;<span class="w"> </span>Please<span class="w"> </span>review<span class="w"> </span>these<span class="w"> </span>configurations:
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>&gt;<span class="w"> </span>Here<span class="err">&#39;</span>s<span class="w"> </span>our<span class="w"> </span>production<span class="w"> </span>config:<span class="w"> </span>@file<span class="o">(</span><span class="s2">&quot;config/prod.yml&quot;</span><span class="o">)</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>&gt;<span class="w"> </span>And<span class="w"> </span>staging<span class="w"> </span>config:<span class="w"> </span>@file<span class="o">(</span><span class="s2">&quot;config/staging.yml&quot;</span><span class="o">)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>&gt;<span class="w"> </span>What<span class="w"> </span>are<span class="w"> </span>the<span class="w"> </span>key<span class="w"> </span>differences?
+</code></pre></div>
+<h4 id="log-analysis">Log Analysis</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>&gt;<span class="w"> </span>Can<span class="w"> </span>you<span class="w"> </span><span class="nb">help</span><span class="w"> </span>me<span class="w"> </span>understand<span class="w"> </span>this<span class="w"> </span>error?
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>&gt;<span class="w"> </span>@file<span class="o">(</span>/var/log/app/error.log<span class="o">)</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>&gt;<span class="w"> </span>And<span class="w"> </span>here<span class="err">&#39;</span>s<span class="w"> </span>the<span class="w"> </span>related<span class="w"> </span>configuration:<span class="w"> </span>@file<span class="o">(</span><span class="s2">&quot;config/logging.yml&quot;</span><span class="o">)</span>
+</code></pre></div>
+<h4 id="documentation-work">Documentation Work</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>&gt;<span class="w"> </span>I<span class="w"> </span>need<span class="w"> </span>to<span class="w"> </span>document<span class="w"> </span>this<span class="w"> </span>module:
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>&gt;<span class="w"> </span>@file<span class="o">(</span><span class="s2">&quot;src/core/module.py&quot;</span><span class="o">)</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>&gt;<span class="w"> </span>It<span class="w"> </span>uses<span class="w"> </span>these<span class="w"> </span>utilities:<span class="w"> </span>@file<span class="o">(</span><span class="s2">&quot;src/utils/helpers.py&quot;</span><span class="o">)</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>&gt;<span class="w"> </span>Can<span class="w"> </span>you<span class="w"> </span><span class="nb">help</span><span class="w"> </span>me<span class="w"> </span>write<span class="w"> </span>comprehensive<span class="w"> </span>documentation?
+</code></pre></div>
 <h2 id="workflow-examples">Workflow Examples</h2>
 <h3 id="development-session">Development Session</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Start a development session</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>looplm<span class="w"> </span>chat<span class="w"> </span>--provider<span class="w"> </span>anthropic
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>&gt;<span class="w"> </span>I<span class="w"> </span>need<span class="w"> </span>to<span class="w"> </span>build<span class="w"> </span>a<span class="w"> </span>REST<span class="w"> </span>API<span class="w"> </span>with<span class="w"> </span>FastAPI
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1"># Save the session</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>/save
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>Enter<span class="w"> </span>session<span class="w"> </span>name:<span class="w"> </span>fastapi-development
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1"># Later, resume the session</span>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>looplm<span class="w"> </span>chat
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>/load
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>Select<span class="w"> </span>session:<span class="w"> </span>fastapi-development
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Start a development session</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>looplm<span class="w"> </span>chat<span class="w"> </span>--provider<span class="w"> </span>anthropic
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>&gt;<span class="w"> </span>I<span class="w"> </span>need<span class="w"> </span>to<span class="w"> </span>build<span class="w"> </span>a<span class="w"> </span>REST<span class="w"> </span>API<span class="w"> </span>with<span class="w"> </span>FastAPI
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="c1"># Save the session</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>/save
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>Enter<span class="w"> </span>session<span class="w"> </span>name:<span class="w"> </span>fastapi-development
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="c1"># Later, resume the session</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>looplm<span class="w"> </span>chat
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>/load
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>Select<span class="w"> </span>session:<span class="w"> </span>fastapi-development
 </code></pre></div>
 <h3 id="code-review-workflow">Code Review Workflow</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Start a code review session</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>looplm<span class="w"> </span>chat<span class="w"> </span>--provider<span class="w"> </span>openai<span class="w"> </span>--model<span class="w"> </span>gpt-4
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>&gt;<span class="w"> </span>I<span class="err">&#39;</span>m<span class="w"> </span>going<span class="w"> </span>to<span class="w"> </span>share<span class="w"> </span>some<span class="w"> </span>code<span class="w"> </span><span class="k">for</span><span class="w"> </span>review
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># After discussion</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>/save
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>Enter<span class="w"> </span>session<span class="w"> </span>name:<span class="w"> </span>code-review-sprint-1
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1"># Share findings with team</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>/usage<span class="w">  </span><span class="c1"># Check token usage for reporting</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># Start a code review session</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>looplm<span class="w"> </span>chat<span class="w"> </span>--provider<span class="w"> </span>openai<span class="w"> </span>--model<span class="w"> </span>gpt-4
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>&gt;<span class="w"> </span>I<span class="err">&#39;</span>m<span class="w"> </span>going<span class="w"> </span>to<span class="w"> </span>share<span class="w"> </span>some<span class="w"> </span>code<span class="w"> </span><span class="k">for</span><span class="w"> </span>review
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="c1"># After discussion</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>/save
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>Enter<span class="w"> </span>session<span class="w"> </span>name:<span class="w"> </span>code-review-sprint-1
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="c1"># Share findings with team</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>/usage<span class="w">  </span><span class="c1"># Check token usage for reporting</span>
 </code></pre></div>
 <h3 id="learning-session">Learning Session</h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Start a learning session</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>looplm<span class="w"> </span>chat
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>&gt;<span class="w"> </span>I<span class="w"> </span>want<span class="w"> </span>to<span class="w"> </span>learn<span class="w"> </span>about<span class="w"> </span>design<span class="w"> </span>patterns
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1"># Save progress</span>
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>/save
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>Enter<span class="w"> </span>session<span class="w"> </span>name:<span class="w"> </span>design-patterns-study
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1"># Change model for deeper insights</span>
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>/model
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>Select:<span class="w"> </span>anthropic/claude-3-opus
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="c1"># Continue learning</span>
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>&gt;<span class="w"> </span>Can<span class="w"> </span>you<span class="w"> </span>explain<span class="w"> </span>the<span class="w"> </span>Factory<span class="w"> </span>pattern?
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Start a learning session</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>looplm<span class="w"> </span>chat
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>&gt;<span class="w"> </span>I<span class="w"> </span>want<span class="w"> </span>to<span class="w"> </span>learn<span class="w"> </span>about<span class="w"> </span>design<span class="w"> </span>patterns
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="c1"># Save progress</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>/save
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>Enter<span class="w"> </span>session<span class="w"> </span>name:<span class="w"> </span>design-patterns-study
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="c1"># Change model for deeper insights</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>/model
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>Select:<span class="w"> </span>anthropic/claude-3-opus
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="c1"># Continue learning</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>&gt;<span class="w"> </span>Can<span class="w"> </span>you<span class="w"> </span>explain<span class="w"> </span>the<span class="w"> </span>Factory<span class="w"> </span>pattern?
 </code></pre></div>
 <h2 id="best-practices">Best Practices</h2>
 <h3 id="session-organization">Session Organization</h3>
 <ol>
 <li>
 <p><strong>Use Descriptive Names</strong>
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>project-backend-design
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>api-security-review
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>python-concurrency-learning
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>project-backend-design
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>api-security-review
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>python-concurrency-learning
 </code></pre></div></p>
 </li>
 <li>
@@ -1028,9 +1222,9 @@
 </li>
 <li>
 <p><strong>Clean Session Management</strong>
-   <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>/list  # Review available sessions
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>/delete  # Remove obsolete sessions
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>/new  # Start fresh for new topics
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>/list  # Review available sessions
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>/delete  # Remove obsolete sessions
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>/new  # Start fresh for new topics
 </code></pre></div></p>
 </li>
 </ol>
@@ -1089,7 +1283,7 @@
     <script id="__config" type="application/json">{"base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.83f73b43.min.js"></script>
+      <script src="../assets/javascripts/bundle.88dd0f4e.min.js"></script>
       
     
   </body>
