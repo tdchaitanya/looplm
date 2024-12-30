@@ -5,6 +5,8 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.live import Live
 from rich.text import Text
+from rich.panel import Panel
+from rich.style import Style
 from litellm import completion
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
@@ -33,12 +35,6 @@ class ConversationHandler:
 
     def _setup_environment(self, provider: ProviderType) -> None:
         """Set up environment variables for the specified provide"""
-        # for key in list(os.environ.keys()):
-        #     if any(
-        #         key.startswith(p)
-        #         for p in ["ANTHROPIC_", "OPENAI_", "AZURE_", "AWS_", "GEMINI_"]
-        #     ):
-        #         del os.environ[key]
 
         credentials = self.config_manager.get_provider_credentials(provider)
         for key, value in credentials.items():
@@ -68,14 +64,6 @@ class ConversationHandler:
             )
             return provider, provider_config["default_model"], actual_name
 
-            # providers = self.config_manager.get_configured_providers()
-            # if provider not in providers:
-            #     raise ValueError(f"Provider {provider_name} is not configured")
-
-            # if model_name:
-            #     return provider, model_name
-            # return provider, providers[provider]["default_model"]
-
         provider, default_model = self.config_manager.get_default_provider()
         if not provider or not default_model:
             raise ValueError(
@@ -102,9 +90,26 @@ class ConversationHandler:
     def _stream_markdown(self, content: str, live: Live) -> None:
         """Update live display with markdown-formatted content"""
         try:
-            live.update(Markdown(content))
+            markdown = Markdown(content)
+
+            panel = Panel(
+                markdown,
+                style=Style(bgcolor="rgb(40,44,52)"),
+                border_style="dim white",
+                padding=(1, 2),
+                expand=True,
+            )
+            live.update(panel, refresh=True)
         except Exception:
-            live.update(Text(content))
+            text = Text(content)
+            panel = Panel(
+                text,
+                style=Style(bgcolor="rgb(40,44,52)"),
+                border_style="dim white",
+                padding=(1, 2),
+                expand=True,
+            )
+            live.update(panel)
 
     def handle_prompt(
         self, prompt: str, provider: Optional[str] = None, model: Optional[str] = None
@@ -120,7 +125,7 @@ class ConversationHandler:
             messages = [{"role": "user", "content": prompt}]
 
             with Live(
-                "", refresh_per_second=6, console=self.console, auto_refresh=True
+                "", refresh_per_second=4, console=self.console, auto_refresh=True
             ) as live:
                 live.console.width = None
                 accumulated_text = ""

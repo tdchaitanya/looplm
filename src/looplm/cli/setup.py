@@ -286,15 +286,8 @@ def initial_setup():
             if not is_first_setup:
                 handle_default_provider_selection(config_manager, provider)
 
-            # if Confirm.ask("\nWould you like to configure another provider?"):
-            #     initial_setup()
-            # else:
-            #     break
             if not Confirm.ask("\nWould you like to configure another provider?"):
                 break
-
-        # else:
-        #     console.print("❌  Provider configuration failed", style="bold red")
         else:
             console.print("❌  Provider configuration failed", style="bold red")
             if not configured_any:

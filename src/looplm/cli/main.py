@@ -183,10 +183,6 @@ def show_status():
     table.add_column("Default Model", style="green")
     table.add_column("Status", style="yellow")
 
-    # for provider, config in providers.items():
-    #     provider_info = PROVIDER_CONFIGS[provider]
-    #     status = "DEFAULT" if provider == default_provider else "Configured"
-    #     table.add_row(provider_info.name, config["default_model"], status)
     for provider, config in providers.items():
         display_name = config_manager.get_provider_display_name(provider, config)
         status = "DEFAULT" if provider == default_provider else "Configured"

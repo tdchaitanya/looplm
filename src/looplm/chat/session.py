@@ -8,8 +8,9 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.live import Live
 from rich.text import Text
+from rich.panel import Panel
+from rich.style import Style
 from litellm import completion
-
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
 
@@ -215,9 +216,26 @@ class ChatSession:
     def _stream_markdown(self, content: str, live: Live) -> None:
         """Update live display with markdown content"""
         try:
-            live.update(Markdown(content))
+            markdown = Markdown(content)
+
+            panel = Panel(
+                markdown,
+                style=Style(bgcolor="rgb(40,44,52)"),
+                border_style="dim white",
+                padding=(1, 2),
+                expand=True,
+            )
+            live.update(panel, refresh=True)
         except Exception:
-            live.update(Text(content))
+            text = Text(content)
+            panel = Panel(
+                text,
+                style=Style(bgcolor="rgb(40,44,52)"),
+                border_style="dim white",
+                padding=(1, 2),
+                expand=True,
+            )
+            live.update(panel)
 
     def clear_history(self, keep_system_prompt: bool = True):
         """Clear chat history"""
