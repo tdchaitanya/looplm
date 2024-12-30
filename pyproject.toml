@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "looplm"
-version = "0.2.1"
+version = "0.3.0"
 description = "Loop-LM: Tool to access LLMs from the command line"
 authors = ["Chaitanya Devaguptapu <tdchaitanya@gmail.com>"]
 readme = "README.md"
@@ -14,10 +14,9 @@ rich = "^13.9.4"
 cryptography = "^43.0.3"
 boto3 = "^1.35.57"
 prompt-toolkit = "^3.0.48"
-
-textual = "^0.89.0"
 markitdown = "^0.0.1a3"
 gnureadline = "^8.2.13"
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
 black = "^24.10.0"

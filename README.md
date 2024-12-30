@@ -19,10 +19,12 @@ LoopLM is a highly customisable command line tool that seamlessly integrates var
 ## Features
 
 - 🚀 **Support for multiple LLM providers**: Works with OpenAI, Anthropic, Google Gemini, Azure OpenAI, AWS Bedrock, and other providers through [LiteLLM](https://litellm.vercel.app/docs/providers) integration. You can easily switch between different providers and models
+- 📂 **File Integration**: Include files directly in your prompts using @file directives, supporting code files, logs, configurations, and even PDFs and documents
 - 🔒 **Secure Configuration**: All API keys and credentials are stored securely using encryption
-- 💻 **Simple CLI**: Intuitive command-line interface for quick access to LLMs and pipe support for integration with Unix tools
+- 💻 **Simple CLI**: Intuitive command-line interface for quick access to AI capabilities
 - 💬 **Interactive Chat Mode**: Engage in persistent, interactive conversations with your preferred LLM using looplm chat
 - 🔍 **Rich Output**: Beautiful terminal output with markdown support
+- 🔍 **Smart Context**: Maintain conversation context and system prompts for consistent interactions
 
 ## Quick Start
 
@@ -36,9 +38,21 @@ pipx install looplm
 looplm --configure
 ```
 
-3. Start using the CLI:
+3. Start using the CLI with direct file support:
 ```bash
-looplm "Write a function to calculate fibonacci numbers in Python"
+# Review code with file directive
+looplm "Review this code: @file(src/main.py)"
+
+# Compare implementations
+looplm "Compare these files: @file(v1.py) vs @file(v2.py)"
+
+# Analyze logs
+looplm "Check this log: @file(/var/log/app.log)"
+```
+
+4. Start an interactive chat session:
+```bash
+looplm chat
 ```
 
 ## Why LoopLM?
