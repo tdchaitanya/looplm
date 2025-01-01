@@ -1,4 +1,14 @@
 # src/looplm/cli/main.py
+import warnings
+import traceback
+
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+    log = file if hasattr(file, 'write') else sys.stderr
+    traceback.print_stack(file=log)
+    log.write(warnings.formatwarning(message, category, filename, lineno, line))
+
+warnings.showwarning = warn_with_traceback
+
 import click
 import sys
 from rich.console import Console

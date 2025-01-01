@@ -7,7 +7,7 @@ import urllib.request
 from pathlib import Path
 from typing import Tuple, Optional
 import mimetypes
-from markitdown import MarkItDown
+# from markitdown import MarkItDown
 import tempfile
 
 class FilePreprocessor:
@@ -191,12 +191,12 @@ class FilePreprocessor:
             return self._format_text_content(file_path)
 
         # Use markitdown for supported formats
-        try:
-            md = MarkItDown()
-            result = md.convert(str(file_path))
-            return result.text_content
-        except Exception as e:
-            raise ValueError(f"Unsupported file format or conversion error: {str(e)}")
+        # try:
+            # md = MarkItDown()
+            # result = md.convert(str(file_path))
+            # return result.text_content
+        # except Exception as e:
+        #     raise ValueError(f"Unsupported file format or conversion error: {str(e)}")
 
     def _format_text_content(self, file_path: Path) -> str:
         """
