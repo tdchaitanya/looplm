@@ -1,4 +1,21 @@
 # src/looplm/cli/main.py
+
+# Suppress warnings before any other imports
+import logging
+import os
+import warnings
+
+# Force suppress all warnings
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore", message=".*Valid config keys have changed in V2.*")
+warnings.simplefilter("ignore", DeprecationWarning)
+warnings.simplefilter("ignore", UserWarning)
+warnings.simplefilter("ignore", RuntimeWarning)
+warnings.simplefilter("ignore", PendingDeprecationWarning)
+
+# Disable all logging except critical
+logging.getLogger().setLevel(logging.CRITICAL)
+
 import sys
 
 import click

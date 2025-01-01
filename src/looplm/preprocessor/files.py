@@ -3,6 +3,7 @@
 import mimetypes
 import os
 import re
+import shutil
 import tempfile
 import urllib.request
 from pathlib import Path
@@ -45,6 +46,11 @@ class FilePreprocessor:
         ".hpp",
     }
 
+    # Precompiled regex patterns for better performance
+    QUOTED_PATTERN = re.compile(r'@file\("([^"]+)"\)')
+    UNQUOTED_PATTERN = re.compile(r'@file\s+([^\s"]+)')
+    UNQUOTED_PATTERN_BRACKET = re.compile(r"@file\(([^)]+)\)")
+
     def __init__(self, base_path: Optional[str] = None):
         """
         Initialize the file preprocessor.
@@ -54,7 +60,6 @@ class FilePreprocessor:
                       If not provided, uses current working directory.
         """
         self.temp_dir = Path(tempfile.mkdtemp())
-
         # Convert to absolute path and resolve any symlinks
         self.base_path = Path(base_path or os.getcwd()).resolve()
 
@@ -78,12 +83,6 @@ class FilePreprocessor:
             ValueError: If file format is unsupported or URL is invalid
             RuntimeError: If there are issues processing the file
         """
-        # Pattern for @file("path") format
-        quoted_pattern = r'@file\("([^"]+)"\)'
-        # Pattern for @file path format
-        unquoted_pattern = r'@file\s+([^\s"]+)'
-        # Pattern for @file(path) format
-        unquoted_pattern_bracket = r"@file\(([^)]+)\)"
 
         def replace_match(match):
             file_path = match.group(1)
@@ -93,10 +92,10 @@ class FilePreprocessor:
                 # Keep the original directive and append error message
                 return f'@file("{file_path}") // Error: {str(e)}'
 
-        # Process both patterns
-        prompt = re.sub(quoted_pattern, replace_match, prompt)
-        prompt = re.sub(unquoted_pattern, replace_match, prompt)
-        prompt = re.sub(unquoted_pattern_bracket, replace_match, prompt)
+        # Process all patterns using precompiled regex
+        prompt = self.QUOTED_PATTERN.sub(replace_match, prompt)
+        prompt = self.UNQUOTED_PATTERN.sub(replace_match, prompt)
+        prompt = self.UNQUOTED_PATTERN_BRACKET.sub(replace_match, prompt)
 
         return prompt
 
@@ -161,63 +160,62 @@ class FilePreprocessor:
             f"  - Relative to base path: {base_path}"
         )
 
+    def _handle_url(self, url: str) -> str:
+        """
+        Handle URL-based file inclusion with security checks.
 
-def _handle_url(self, url: str) -> str:
-    """
-    Handle URL-based file inclusion with security checks.
+        Args:
+            url: URL to download and process
 
-    Args:
-        url: URL to download and process
+        Returns:
+            str: Processed file content
 
-    Returns:
-        str: Processed file content
+        Raises:
+            ValueError: If URL is invalid, unsecured, or content type is unsupported
+        """
+        try:
+            # Validate URL scheme
+            parsed_url = urlparse(url)
+            if parsed_url.scheme not in {"http", "https"}:
+                raise ValueError(
+                    f"Unsupported URL scheme: {parsed_url.scheme}. Only http and https are allowed."
+                )
 
-    Raises:
-        ValueError: If URL is invalid, unsecured, or content type is unsupported
-    """
-    try:
-        # Validate URL scheme
-        parsed_url = urlparse(url)
-        if parsed_url.scheme not in {"http", "https"}:
-            raise ValueError(
-                f"Unsupported URL scheme: {parsed_url.scheme}. Only http and https are allowed."
+            # Make request with security headers and timeout
+            headers = {
+                "User-Agent": "Mozilla/5.0 (compatible; LoopLM/1.0)",
+                "Accept": "text/plain, text/html, application/json, */*",
+            }
+
+            response = requests.get(
+                url,
+                headers=headers,
+                timeout=10,
+                stream=True,
+                verify=True,  # Verify SSL certificates
             )
+            response.raise_for_status()
 
-        # Make request with security headers and timeout
-        headers = {
-            "User-Agent": "Mozilla/5.0 (compatible; LoopLM/1.0)",
-            "Accept": "text/plain, text/html, application/json, */*",
-        }
+            content_type = response.headers.get("content-type", "").split(";")[0]
+            ext = mimetypes.guess_extension(content_type) or ".tmp"
+            temp_file = self.temp_dir / f"download{ext}"
 
-        response = requests.get(
-            url,
-            headers=headers,
-            timeout=10,
-            stream=True,
-            verify=True,  # Verify SSL certificates
-        )
-        response.raise_for_status()
+            # Download with size limit (10MB)
+            max_size = 10 * 1024 * 1024
+            with open(temp_file, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    if temp_file.stat().st_size > max_size:
+                        raise ValueError(
+                            f"File too large. Maximum size is {max_size/1024/1024}MB"
+                        )
 
-        content_type = response.headers.get("content-type", "").split(";")[0]
-        ext = mimetypes.guess_extension(content_type) or ".tmp"
-        temp_file = self.temp_dir / f"download{ext}"
+            return self._handle_local_file(str(temp_file))
 
-        # Download with size limit (10MB)
-        max_size = 10 * 1024 * 1024
-        with open(temp_file, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-                if temp_file.stat().st_size > max_size:
-                    raise ValueError(
-                        f"File too large. Maximum size is {max_size/1024/1024}MB"
-                    )
-
-        return self._handle_local_file(temp_file)
-
-    except requests.RequestException as e:
-        raise ValueError(f"Failed to fetch URL {url}: {str(e)}")
-    except Exception as e:
-        raise ValueError(f"Failed to process URL {url}: {str(e)}")
+        except requests.RequestException as e:
+            raise ValueError(f"Failed to fetch URL {url}: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Failed to process URL {url}: {str(e)}")
 
     def _handle_local_file(self, file_path: str) -> str:
         """
@@ -270,6 +268,8 @@ def _handle_url(self, url: str) -> str:
 
     def cleanup(self):
         """Clean up temporary files."""
-        import shutil
-
         shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def __del__(self):
+        """Ensure cleanup is called when the object is deleted."""
+        self.cleanup()
