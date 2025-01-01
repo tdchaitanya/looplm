@@ -1,7 +1,7 @@
 # src/looplm/chat/prompts.py
 
-from pathlib import Path
 import json
+from pathlib import Path
 from typing import Dict
 
 DEFAULT_SYSTEM_PROMPT = """You are a helpful assistant"""

@@ -1,7 +1,7 @@
 # src/looplm/config/providers.py
+import enum
 from dataclasses import dataclass
 from typing import Dict, List
-import enum
 
 
 class ProviderType(enum.Enum):

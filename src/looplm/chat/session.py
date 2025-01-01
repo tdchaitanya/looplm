@@ -1,20 +1,23 @@
 # src/looplm/chat/session.py
-from typing import Optional, Dict, List
-from datetime import datetime
-from dataclasses import dataclass, field
-from uuid import uuid4
 import os
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Dict, List, Optional
+from uuid import uuid4
+
 import gnureadline
+from litellm import completion
 from rich.console import Console
-from rich.markdown import Markdown
 from rich.live import Live
-from rich.text import Text
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.style import Style
-from litellm import completion
+from rich.text import Text
+
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
 from ..preprocessor.files import FilePreprocessor
+
 
 @dataclass
 class TokenUsage:
@@ -313,7 +316,7 @@ class ChatSession:
 
     def __del__(self):
         """Cleanup when session is destroyed."""
-        if hasattr(self, 'file_preprocessor'):
+        if hasattr(self, "file_preprocessor"):
             self.file_preprocessor.cleanup()
 
     def _handle_streaming_response(

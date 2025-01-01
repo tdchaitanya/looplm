@@ -1,11 +1,13 @@
 # src/looplm/chat/console.py
 
-from typing import List, Dict, Optional
-from rich.console import Console
-from rich.table import Table
-from rich.prompt import Prompt, Confirm
-from rich.markdown import Markdown
 from datetime import datetime
+from typing import Dict, List, Optional
+
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.prompt import Confirm, Prompt
+from rich.table import Table
+
 from ..config.manager import ConfigManager
 
 

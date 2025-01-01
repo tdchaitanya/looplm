@@ -1,8 +1,9 @@
 # src/looplm/chat/persistence.py
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
-from datetime import datetime
+
 from .session import ChatSession
 
 

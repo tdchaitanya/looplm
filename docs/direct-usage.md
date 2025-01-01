@@ -196,7 +196,7 @@ fi
    ```bash
    # Complex tasks: Use more capable models
    looplm --provider anthropic --model claude-3.5-sonnet "Design a system architecture"
-   
+
    # Simple tasks: Use faster models
    looplm --provider openai --model gpt-4o-mini "Format this JSON"
    ```
@@ -209,8 +209,7 @@ fi
    ```bash
    # Good
    looplm "Write a Python function to sort a list of dictionaries by the 'date' key"
-   
+
    # Less effective
    looplm "Sort dictionaries"
    ```
-

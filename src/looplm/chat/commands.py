@@ -1,14 +1,16 @@
 # src/looplm/chat/commands.py
 
 from typing import Optional
+
 from rich.prompt import Prompt
 from rich.table import Table
-from .console import ChatConsole
-from .session import ChatSession
-from .persistence import SessionManager
-from .prompts import PromptsManager
+
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
+from .console import ChatConsole
+from .persistence import SessionManager
+from .prompts import PromptsManager
+from .session import ChatSession
 
 
 class CommandHandler:

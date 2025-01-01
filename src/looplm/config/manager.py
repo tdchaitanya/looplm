@@ -1,13 +1,15 @@
 # src/looplm/config/manager.py
-import os
 import json
-from pathlib import Path
-from typing import Dict, Optional, Tuple, Any
+import os
 from base64 import b64encode
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
+
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from .providers import ProviderType, PROVIDER_CONFIGS
+
+from .providers import PROVIDER_CONFIGS, ProviderType
 
 
 class ConfigManager:

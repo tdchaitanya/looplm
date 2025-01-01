@@ -1,7 +1,7 @@
 # src/looplm/__init__.py
 """looplm - LLMs on the command line"""
-__version__ = "0.1.0"
+__version__ = "0.3.1"
 
-from .config.manager import ConfigManager
-from .config.providers import ProviderType, ProviderConfig, PROVIDER_CONFIGS
-from .conversation.handler import ConversationHandler
+from .config.manager import *
+from .config.providers import *
+from .conversation.handler import *

@@ -1,13 +1,15 @@
 # src/looplm/cli/setup.py
 import os
 from typing import Dict, List
-from rich.console import Console
-from rich.prompt import Prompt, Confirm
-from rich.panel import Panel
+
 from rich.align import Align
+from rich.console import Console
+from rich.panel import Panel
+from rich.prompt import Confirm, Prompt
 from rich.text import Text
-from ..config.providers import ProviderType, PROVIDER_CONFIGS
+
 from ..config.manager import ConfigManager
+from ..config.providers import PROVIDER_CONFIGS, ProviderType
 
 console = Console()
 

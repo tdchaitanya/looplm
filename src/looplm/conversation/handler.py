@@ -1,14 +1,16 @@
 # src/looplm/conversation/handler.py
-from typing import Optional, Tuple
 import os
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.live import Live
-from rich.text import Text
-from rich.panel import Panel
-from rich.style import Style
+from typing import Optional, Tuple
+
 from litellm import completion
 from litellm.utils import trim_messages
+from rich.console import Console
+from rich.live import Live
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.style import Style
+from rich.text import Text
+
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
 from ..preprocessor.files import FilePreprocessor
@@ -31,7 +33,7 @@ class ConversationHandler:
 
     def __del__(self):
         """Cleanup when handler is destroyed."""
-        if hasattr(self, 'file_preprocessor'):
+        if hasattr(self, "file_preprocessor"):
             self.file_preprocessor.cleanup()
 
     def _get_provider_config(self, provider: ProviderType) -> dict:
@@ -156,9 +158,7 @@ class ConversationHandler:
                     actual_model = f"{custom_provider}/{model_name}"
 
                 response = completion(
-                    model=actual_model,
-                    messages=trim_messages(messages),
-                    stream=True
+                    model=actual_model, messages=trim_messages(messages), stream=True
                 )
 
                 for chunk in response:

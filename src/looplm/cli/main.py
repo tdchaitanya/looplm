@@ -1,24 +1,15 @@
 # src/looplm/cli/main.py
-import warnings
-import traceback
-
-def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
-    log = file if hasattr(file, 'write') else sys.stderr
-    traceback.print_stack(file=log)
-    log.write(warnings.formatwarning(message, category, filename, lineno, line))
-
-warnings.showwarning = warn_with_traceback
+import sys
 
 import click
-import sys
 from rich.console import Console
 from rich.table import Table
-from .setup import initial_setup
+
 from ..chat.commands import CommandHandler
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
 from ..conversation.handler import ConversationHandler
-
+from .setup import initial_setup
 
 console = Console()
 

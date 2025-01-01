@@ -1,23 +1,48 @@
 # src/looplm/preprocessor/files.py
 
-import re
+import mimetypes
 import os
-import urllib.parse
+import re
+import tempfile
 import urllib.request
 from pathlib import Path
-from typing import Tuple, Optional
-import mimetypes
-# from markitdown import MarkItDown
-import tempfile
+from typing import Optional, Tuple
+from urllib.parse import urlparse
+
+import requests
+from markitdown import MarkItDown
+
 
 class FilePreprocessor:
     """Handles file inclusion preprocessing in prompts using @file directives."""
 
     # File extensions that can be directly read as text
     TEXT_EXTENSIONS = {
-        '.txt', '.py', '.js', '.html', '.css', '.json', '.xml', '.md', '.csv',
-        '.yml', '.yaml', '.ini', '.conf', '.sh', '.bash', '.sql', '.log',
-        '.env', '.rs', '.go', '.java', '.cpp', '.c', '.h', '.hpp'
+        ".txt",
+        ".py",
+        ".js",
+        ".html",
+        ".css",
+        ".json",
+        ".xml",
+        ".md",
+        ".csv",
+        ".yml",
+        ".yaml",
+        ".ini",
+        ".conf",
+        ".sh",
+        ".bash",
+        ".sql",
+        ".log",
+        ".env",
+        ".rs",
+        ".go",
+        ".java",
+        ".cpp",
+        ".c",
+        ".h",
+        ".hpp",
     }
 
     def __init__(self, base_path: Optional[str] = None):
@@ -58,7 +83,7 @@ class FilePreprocessor:
         # Pattern for @file path format
         unquoted_pattern = r'@file\s+([^\s"]+)'
         # Pattern for @file(path) format
-        unquoted_pattern_bracket = r'@file\(([^)]+)\)'
+        unquoted_pattern_bracket = r"@file\(([^)]+)\)"
 
         def replace_match(match):
             file_path = match.group(1)
@@ -136,36 +161,63 @@ class FilePreprocessor:
             f"  - Relative to base path: {base_path}"
         )
 
-    def _handle_url(self, url: str) -> str:
-        """
-        Handle URL-based file inclusion.
 
-        Args:
-            url: URL to download and process
+def _handle_url(self, url: str) -> str:
+    """
+    Handle URL-based file inclusion with security checks.
 
-        Returns:
-            str: Processed file content
+    Args:
+        url: URL to download and process
 
-        Raises:
-            ValueError: If URL is invalid or content type is unsupported
-        """
-        try:
-            with urllib.request.urlopen(url) as response:
-                content_type = response.headers.get('content-type', '').split(';')[0]
+    Returns:
+        str: Processed file content
 
-                # Create temp file with appropriate extension
-                ext = mimetypes.guess_extension(content_type) or '.tmp'
-                temp_file = self.temp_dir / f"download{ext}"
+    Raises:
+        ValueError: If URL is invalid, unsecured, or content type is unsupported
+    """
+    try:
+        # Validate URL scheme
+        parsed_url = urlparse(url)
+        if parsed_url.scheme not in {"http", "https"}:
+            raise ValueError(
+                f"Unsupported URL scheme: {parsed_url.scheme}. Only http and https are allowed."
+            )
 
-                # Download file
-                with open(temp_file, 'wb') as f:
-                    f.write(response.read())
+        # Make request with security headers and timeout
+        headers = {
+            "User-Agent": "Mozilla/5.0 (compatible; LoopLM/1.0)",
+            "Accept": "text/plain, text/html, application/json, */*",
+        }
 
-                # Process the downloaded file
-                return self._handle_local_file(temp_file)
+        response = requests.get(
+            url,
+            headers=headers,
+            timeout=10,
+            stream=True,
+            verify=True,  # Verify SSL certificates
+        )
+        response.raise_for_status()
 
-        except Exception as e:
-            raise ValueError(f"Failed to process URL {url}: {str(e)}")
+        content_type = response.headers.get("content-type", "").split(";")[0]
+        ext = mimetypes.guess_extension(content_type) or ".tmp"
+        temp_file = self.temp_dir / f"download{ext}"
+
+        # Download with size limit (10MB)
+        max_size = 10 * 1024 * 1024
+        with open(temp_file, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+                if temp_file.stat().st_size > max_size:
+                    raise ValueError(
+                        f"File too large. Maximum size is {max_size/1024/1024}MB"
+                    )
+
+        return self._handle_local_file(temp_file)
+
+    except requests.RequestException as e:
+        raise ValueError(f"Failed to fetch URL {url}: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Failed to process URL {url}: {str(e)}")
 
     def _handle_local_file(self, file_path: str) -> str:
         """
@@ -191,12 +243,12 @@ class FilePreprocessor:
             return self._format_text_content(file_path)
 
         # Use markitdown for supported formats
-        # try:
-            # md = MarkItDown()
-            # result = md.convert(str(file_path))
-            # return result.text_content
-        # except Exception as e:
-        #     raise ValueError(f"Unsupported file format or conversion error: {str(e)}")
+        try:
+            md = MarkItDown()
+            result = md.convert(str(file_path))
+            return result.text_content
+        except Exception as e:
+            raise ValueError(f"Unsupported file format or conversion error: {str(e)}")
 
     def _format_text_content(self, file_path: Path) -> str:
         """
@@ -209,19 +261,15 @@ class FilePreprocessor:
             str: Formatted file content
         """
         try:
-            content = file_path.read_text(encoding='utf-8')
-            ext = file_path.suffix.lstrip('.')
+            content = file_path.read_text(encoding="utf-8")
+            ext = file_path.suffix.lstrip(".")
 
-            return (
-                f"File: {file_path}\n"
-                f"```{ext}\n"
-                f"{content}\n"
-                "```"
-            )
+            return f"File: {file_path}\n" f"```{ext}\n" f"{content}\n" "```"
         except UnicodeDecodeError:
             raise ValueError("File appears to be binary or uses unsupported encoding")
 
     def cleanup(self):
         """Clean up temporary files."""
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
