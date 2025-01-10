@@ -7,9 +7,9 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
-
+from pathlib import Path
 from ..config.manager import ConfigManager
-
+from .prompt_manager import PromptManager
 
 class ChatConsole:
     """Handles chat UI rendering and interaction"""
@@ -19,6 +19,11 @@ class ChatConsole:
         self.console = console or Console(
             force_terminal=True, force_interactive=True, width=None
         )
+        self.prompt_manager = PromptManager(
+            console=self.console,
+            base_path=Path.cwd()
+        )
+
 
     def display_welcome(self):
         """Display welcome message and instructions"""
@@ -183,13 +188,20 @@ class ChatConsole:
             self.console.print(f"\n{time_str}{prefix} {content}", style=content_style)
 
     def prompt_user(self) -> str:
-        """Get user input with improved prompt"""
-        prefix = "[bright_blue]User ►[/bright_blue]"
+        """Get user input with improved prompt and file completion"""
         timestamp = datetime.now()
-        time_str = f"[dim]{timestamp.strftime('%H:%M')}[/dim] " if timestamp else ""
-        return Prompt.ask(
-            f"\n{time_str}{prefix}", show_default=False, console=self.console
-        ).strip()
+        # Format prompt parts
+        time_str = timestamp.strftime('%H:%M')
+        # Let prompt toolkit handle the styling
+        prefix = f"{time_str} User ► "
+        
+        # Use PromptManager for input with completion
+        user_input = self.prompt_manager.get_input(f"\n{time_str}{prefix}")
+        
+        if user_input.lower() in ("exit", "quit"):
+            return "/quit"
+            
+        return user_input.strip()
 
     def display_error(self, message: str):
         """Display error message"""

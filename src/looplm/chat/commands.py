@@ -11,7 +11,7 @@ from .console import ChatConsole
 from .persistence import SessionManager
 from .prompts import PromptsManager
 from .session import ChatSession
-
+from ..preprocessor.files import FileProcessingError
 
 class CommandHandler:
     """Handles chat commands and orchestrates components"""
@@ -403,9 +403,18 @@ class CommandHandler:
                     self.console.display_error("No active session")
                     continue
 
-                self.session_manager.active_session.send_message(
-                    user_input, stream=True, show_tokens=False
-                )
+                try:
+                    # Try to process the message
+                    self.session_manager.active_session.send_message(
+                        user_input, stream=True, show_tokens=False
+                    )
+                except FileProcessingError as e:
+                    # Handle file processing errors without sending to LLM
+                    self.console.display_error(str(e))
+                    continue
+                except Exception as e:
+                    # Handle other errors
+                    self.console.display_error(str(e))
 
             except KeyboardInterrupt:
                 self.console.display_info("\nUse /quit to exit")

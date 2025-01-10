@@ -12,6 +12,17 @@ from urllib.parse import urlparse
 
 import requests
 from markitdown import MarkItDown
+from markitdown._markitdown import UnsupportedFormatException
+
+class FileProcessingError(Exception):
+    """Custom exception for file processing errors"""
+    def __init__(self, message: str, file_path: str):
+        self.file_path = file_path
+        self.message = message
+        super().__init__(f"Error processing file '{file_path}': {message}")
+
+    def __str__(self):
+        return f"Error processing file '{self.file_path}': {self.message}"
 
 
 class FilePreprocessor:
@@ -63,41 +74,39 @@ class FilePreprocessor:
         # Convert to absolute path and resolve any symlinks
         self.base_path = Path(base_path or os.getcwd()).resolve()
 
-    def process_prompt(self, prompt: str) -> str:
+    def process_prompt(self, prompt: str, raise_errors: bool = True) -> str:
         """
         Process a prompt and replace all @file directives with file contents.
-
-        Supports formats:
-        - @file("path/to/file")
-        - @file path/to/file
-        - @file(path/to/file)
-
+        
         Args:
             prompt: The input prompt containing @file directives
-
+            raise_errors: If True, raises exceptions; if False, returns error messages
+            
         Returns:
-            str: Processed prompt with file contents included
-
+            str: Processed prompt with file contents or error messages included
+            
         Raises:
-            FileNotFoundError: If a local file cannot be found
-            ValueError: If file format is unsupported or URL is invalid
-            RuntimeError: If there are issues processing the file
+            FileProcessingError: If raise_errors is True and an error occurs
         """
-
         def replace_match(match):
             file_path = match.group(1)
             try:
                 return self._process_file_directive(file_path)
             except Exception as e:
-                # Keep the original directive and append error message
-                return f'@file("{file_path}") // Error: {str(e)}'
-
-        # Process all patterns using precompiled regex
-        prompt = self.QUOTED_PATTERN.sub(replace_match, prompt)
-        prompt = self.UNQUOTED_PATTERN.sub(replace_match, prompt)
-        prompt = self.UNQUOTED_PATTERN_BRACKET.sub(replace_match, prompt)
-
-        return prompt
+                if raise_errors:
+                    raise FileProcessingError(str(e), file_path)
+                return f"Error processing @file({file_path}): {str(e)}"
+        
+        try:
+            # Process all patterns using precompiled regex
+            prompt = self.QUOTED_PATTERN.sub(replace_match, prompt)
+            prompt = self.UNQUOTED_PATTERN.sub(replace_match, prompt)
+            prompt = self.UNQUOTED_PATTERN_BRACKET.sub(replace_match, prompt)
+            return prompt
+        except FileProcessingError as e:
+            if raise_errors:
+                raise
+            return f"Error: {str(e)}"
 
     def _process_file_directive(self, path: str) -> str:
         """
@@ -245,6 +254,13 @@ class FilePreprocessor:
             md = MarkItDown()
             result = md.convert(str(file_path))
             return result.text_content
+        except UnsupportedFormatException as e:
+            # Get the unsupported format from the error message
+            unsupported_format = file_path.suffix.lower() if file_path.suffix.lower() else 'unknown'
+            raise FileProcessingError(
+                f"File format '{unsupported_format}' is not supported.",
+                str(file_path)
+            )
         except Exception as e:
             raise ValueError(f"Unsupported file format or conversion error: {str(e)}")
 

@@ -17,7 +17,7 @@ from rich.text import Text
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
 from ..preprocessor.files import FilePreprocessor
-
+from ..preprocessor.files import FileProcessingError
 
 @dataclass
 class TokenUsage:
@@ -280,8 +280,20 @@ class ChatSession:
             Exception: If there's an error sending the message or processing files
         """
         try:
-            processed_content = self.file_preprocessor.process_prompt(content)
+            try: 
 
+                processed_content = self.file_preprocessor.process_prompt(content)
+            except FileProcessingError as e:
+                # Immediately re-raise file errors to be caught by the outer handler
+                raise
+            except Exception as e:
+                # Re-raise other processing errors with more context
+                raise Exception(f"Error processing files: {str(e)}")
+
+ 
+            # Only proceed with the LLM if file processing succeeded
+            self.config_manager._prepare_environment(self.provider.value)
+       
             # Add user message
             user_msg = Message("user", processed_content)
             self.messages.append(user_msg)
@@ -298,10 +310,7 @@ class ChatSession:
             messages = self.get_messages_for_api()
 
             if stream:
-                response_text = self._handle_streaming_response(
-                    actual_model, messages, show_tokens
-                )
-                return response_text
+                return self._handle_streaming_response(actual_model, messages, show_tokens)
             else:
                 return self._handle_normal_response(actual_model, messages, show_tokens)
 
