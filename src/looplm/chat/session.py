@@ -281,7 +281,6 @@ class ChatSession:
         """
         try:
             try: 
-
                 processed_content = self.file_preprocessor.process_prompt(content)
             except FileProcessingError as e:
                 # Immediately re-raise file errors to be caught by the outer handler
@@ -289,7 +288,6 @@ class ChatSession:
             except Exception as e:
                 # Re-raise other processing errors with more context
                 raise Exception(f"Error processing files: {str(e)}")
-
  
             # Only proceed with the LLM if file processing succeeded
             self.config_manager._prepare_environment(self.provider.value)

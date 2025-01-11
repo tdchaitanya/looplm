@@ -47,6 +47,7 @@ class ChatConsole:
         commands = {
             "/help or /h": "Show this help message",
             "/clear or /c": "Clear chat history",
+            "/quit or /q": "chat session",
             "/save": "Save current session",
             "/load": "Load a saved session",
             "/new": "Start a new session",

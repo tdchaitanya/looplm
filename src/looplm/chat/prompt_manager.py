@@ -1,5 +1,4 @@
 # src/looplm/chat/prompt_manager.py
-
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -19,7 +18,7 @@ class FilePathCompleter(Completer):
 
     def __init__(self, base_path: str = None):
         self.base_path = Path(base_path or os.getcwd())
-        self.additional_paths = [Path.cwd()]
+        self.additional_paths = [Path.cwd(), Path.home()]
         if self.base_path not in self.additional_paths:
             self.additional_paths.append(self.base_path)
 
