@@ -11,6 +11,63 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
 from rich.console import Console
+from typing import List, Optional
+from prompt_toolkit.completion import Completer, Completion
+from .commands.registry import CommandRegistry
+from .commands.file_command import FileProcessor
+from .commands.folder_command import FolderProcessor
+from .commands.github_command import GithubProcessor
+
+class CommandCompleter(Completer):
+    """Completer for @ commands with context-aware completion"""
+
+    def __init__(self, registry: CommandRegistry):
+        """Initialize completer with command registry
+        
+        Args:
+            command_registry: Registry of available commands
+        """
+        self.registry = registry
+
+    def get_completions(self, document, complete_event):
+        """Get completions for current input
+        
+        Args:
+            document: Current document
+            complete_event: Completion event
+            
+        Returns:
+            Generator of completions
+        """
+        text = document.text_before_cursor
+        
+        # Find any @ symbol before cursor
+        at_pos = text.rfind('@')
+        if at_pos == -1:
+            return
+            
+        # Get text after @ symbol
+        after_at = text[at_pos:]
+        
+        # Get completions from registry
+        completions = self.registry.get_completions(after_at)
+        
+        # Calculate start position
+        if '(' in after_at:
+            # Inside command arguments
+            arg_start = after_at.find('(') + 1
+            start_pos = -len(after_at[arg_start:])
+        else:
+            # At command name
+            start_pos = -len(after_at[1:])
+            
+        for completion in completions:
+            yield Completion(
+                completion,
+                start_position=start_pos,
+                display=completion
+            )
+
 
 
 class FilePathCompleter(Completer):
@@ -96,10 +153,18 @@ class PromptManager:
         self.console = console or Console()
         self.base_path = base_path or os.getcwd()
         
+        # Initialize command registry
+        self.command_registry = CommandRegistry(base_path=Path(self.base_path))
+        
+        # Register command processors
+        self.command_registry.register(FileProcessor)
+        self.command_registry.register(FolderProcessor)
+        self.command_registry.register(GithubProcessor)
+        
         # Setup prompt styling
         self.style = Style.from_dict({
-            "prompt": "#0000ff bold",  # blue
-            "timestamp": "#666666",    # gray for dim effect
+            "prompt": "#0000ff bold",
+            "timestamp": "#666666",
         })
 
         # Setup history
@@ -125,11 +190,11 @@ class PromptManager:
                 buf.insert_text('""')
                 buf.cursor_left()
         
-        # Initialize prompt session
+        # Initialize prompt session with command completion
         self.session = PromptSession(
             history=FileHistory(history_file),
             auto_suggest=AutoSuggestFromHistory(),
-            completer=FilePathCompleter(self.base_path),
+            completer=CommandCompleter(self.command_registry),
             style=self.style,
             complete_while_typing=True,
             key_bindings=kb,

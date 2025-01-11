@@ -22,7 +22,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from ..chat.commands import CommandHandler
+from ..chat.control import CommandHandler
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
 from ..conversation.handler import ConversationHandler
@@ -57,7 +57,8 @@ def process_input(args: tuple, piped_input: str = "") -> str:
 @click.option("--reset-provider", help="Reset configuration for specific provider")
 @click.option("--set-default", help="Set default provider and model")
 @click.option("--status", is_flag=True, help="Show configuration status")
-def cli(prompt, provider, model, configure, reset, reset_provider, set_default, status):
+@click.option("--debug", is_flag=True, help="Show processed commands without sending to LLM")
+def cli(prompt, provider, model, configure, reset, reset_provider, set_default, status, debug):
     """looplm - LLMs on the command line"""
     config_manager = ConfigManager()
 
@@ -69,7 +70,7 @@ def cli(prompt, provider, model, configure, reset, reset_provider, set_default, 
     # chat mode
     if prompt and prompt[0] == "chat":
         try:
-            handler = CommandHandler(provider=provider, model=model)
+            handler = CommandHandler(provider=provider, model=model, debug=debug)
             handler.start_session()
 
             if prompt:

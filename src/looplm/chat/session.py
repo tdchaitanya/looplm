@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import uuid4
+from pathlib import Path
 
 import gnureadline
 from litellm import completion
@@ -16,8 +17,10 @@ from rich.text import Text
 
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
-from ..preprocessor.files import FilePreprocessor
-from ..preprocessor.files import FileProcessingError
+from .commands.registry import CommandRegistry
+from .commands.file_command import FileProcessor
+from .commands.folder_command import FolderProcessor
+from .commands.github_command import GithubProcessor
 
 @dataclass
 class TokenUsage:
@@ -90,6 +93,7 @@ class ChatSession:
     updated_at: datetime = field(default_factory=datetime.now)
     messages: List[Message] = field(default_factory=list)
     total_usage: TokenUsage = field(default_factory=TokenUsage)
+    base_path: Path = field(default_factory=lambda: Path(os.getcwd()))
 
     # Configuration
     console: Console = field(
@@ -102,10 +106,6 @@ class ChatSession:
     model: Optional[str] = None
     custom_provider: Optional[str] = None
 
-    file_preprocessor: FilePreprocessor = field(
-        default_factory=lambda: FilePreprocessor(base_path=os.getcwd())
-    )
-
     def __post_init__(self):
         """Initialize after creation"""
         if not self.provider or not self.model:
@@ -113,6 +113,14 @@ class ChatSession:
             self.provider = provider
             self.model = model
             self.custom_provider = custom_provider
+        
+        # Initialize command registry
+        self.command_registry = CommandRegistry(base_path=self.base_path)
+        
+        # Register command processors
+        self.command_registry.register(FileProcessor)
+        self.command_registry.register(FolderProcessor)
+        self.command_registry.register(GithubProcessor)
 
     def _get_provider_and_model(
         self, provider_name: Optional[str] = None, model_name: Optional[str] = None
@@ -260,16 +268,16 @@ class ChatSession:
         self.updated_at = datetime.now()
 
     def send_message(
-        self, content: str, stream: bool = True, show_tokens: bool = False
+        self, content: str, stream: bool = True, show_tokens: bool = False, debug: bool = False
     ) -> str:
         """
         Send a message and get response.
 
-        Handles file inclusions in the message using @file directives before sending
+        Handles command processing (@file, @folder, @github) before sending
         to the model.
 
         Args:
-            content: Message content, may contain @file directives
+            content: Message content, may contain @ commands
             stream: Whether to stream the response
             show_tokens: Whether to show token usage
 
@@ -277,27 +285,33 @@ class ChatSession:
             str: Model's response
 
         Raises:
-            Exception: If there's an error sending the message or processing files
+            Exception: If there's an error sending the message or processing commands
         """
         try:
-            try: 
-                processed_content = self.file_preprocessor.process_prompt(content)
-            except FileProcessingError as e:
-                # Immediately re-raise file errors to be caught by the outer handler
-                raise
-            except Exception as e:
-                # Re-raise other processing errors with more context
-                raise Exception(f"Error processing files: {str(e)}")
- 
-            # Only proceed with the LLM if file processing succeeded
+            # Process all commands in the message
+            # Use sync version or run async in sync context
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+            processed_content = loop.run_until_complete(
+                self.command_registry.process_text(content)
+            )
+            if debug:
+                # In debug mode, just display the processed content
+                self.console.print("\nProcessed Content:", style="bold blue")
+                self.console.print(processed_content)
+                return processed_content
+            
+            # Only proceed with the LLM if command processing succeeded
             self.config_manager._prepare_environment(self.provider.value)
        
             # Add user message
             user_msg = Message("user", processed_content)
             self.messages.append(user_msg)
-
-            # Setup environment
-            self.config_manager._prepare_environment(self.provider.value)
 
             # Prepare model name
             actual_model = self.model
@@ -312,15 +326,10 @@ class ChatSession:
             else:
                 return self._handle_normal_response(actual_model, messages, show_tokens)
 
-        except FileNotFoundError as e:
-            # Handle file not found errors specifically
-            error_msg = f"Error processing file inclusion: {str(e)}"
-            self.console.print(error_msg, style="bold red")
-            raise Exception(error_msg)
-
         except Exception as e:
             raise Exception(f"Error sending message: {str(e)}")
 
+ 
     def __del__(self):
         """Cleanup when session is destroyed."""
         if hasattr(self, "file_preprocessor"):
@@ -402,6 +411,12 @@ class ChatSession:
             )
         )
         self._update_total_usage(token_usage)
+
+        timestamp = datetime.now()
+        self.console.print()  # Add newline before response
+        self.console.print(f"{timestamp.strftime('%H:%M')} ", style="dim", end="")
+        self.console.print("Assistant ▣", style="bright_green")
+        self.console.print(Markdown(content))
 
         # Optionally display token usage
         if show_tokens:

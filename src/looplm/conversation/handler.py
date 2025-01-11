@@ -13,7 +13,6 @@ from rich.text import Text
 
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
-from ..preprocessor.files import FilePreprocessor
 
 
 class ConversationHandler:
@@ -29,7 +28,6 @@ class ConversationHandler:
             self.console = console
             self.console.width = None
         self.config_manager = ConfigManager()
-        self.file_preprocessor = FilePreprocessor(base_path=os.getcwd())
 
     def __del__(self):
         """Cleanup when handler is destroyed."""

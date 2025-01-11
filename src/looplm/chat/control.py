@@ -11,12 +11,11 @@ from .console import ChatConsole
 from .persistence import SessionManager
 from .prompts import PromptsManager
 from .session import ChatSession
-from ..preprocessor.files import FileProcessingError
 
 class CommandHandler:
     """Handles chat commands and orchestrates components"""
 
-    def __init__(self, provider: Optional[str] = None, model: Optional[str] = None):
+    def __init__(self, provider: Optional[str] = None, model: Optional[str] = None,  debug: bool = False):
         """Initialize command handler"""
         self.console = ChatConsole()
         self.session_manager = SessionManager()
@@ -24,6 +23,7 @@ class CommandHandler:
         self.prompts_manager = PromptsManager()
         self.override_provider = provider
         self.override_model = model
+        self.debug = debug
 
     def handle_command(self, cmd: str) -> bool:
         """
@@ -406,12 +406,8 @@ class CommandHandler:
                 try:
                     # Try to process the message
                     self.session_manager.active_session.send_message(
-                        user_input, stream=True, show_tokens=False
+                        user_input, stream=True, show_tokens=False, debug=self.debug
                     )
-                except FileProcessingError as e:
-                    # Handle file processing errors without sending to LLM
-                    self.console.display_error(str(e))
-                    continue
                 except Exception as e:
                     # Handle other errors
                     self.console.display_error(str(e))
