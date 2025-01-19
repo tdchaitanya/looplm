@@ -137,7 +137,8 @@ class FolderProcessor(CommandProcessor):
         
         for item in base.glob(pattern):
             if item.is_dir():
-                display = str(item.relative_to(base)) + "/"
-                completions.append(display)
+                prefix = text[:text.rfind('/') + 1] if '/' in text else ''
+                new_part = str(item.name) + "/" 
+                completions.append(prefix + new_part)
             
         return completions

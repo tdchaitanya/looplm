@@ -59,7 +59,7 @@ class CommandCompleter(Completer):
             start_pos = -len(after_at[arg_start:])
         else:
             # At command name
-            start_pos = -len(after_at[1:])
+            start_pos = -len(after_at)
             
         for completion in completions:
             yield Completion(

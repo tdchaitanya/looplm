@@ -220,10 +220,10 @@ class FileProcessor(CommandProcessor):
         completions = []
         
         for item in base.glob(pattern):
-            # Add trailing slash for directories
-            display = str(item.relative_to(base))
+            prefix = text[:text.rfind('/') + 1] if '/' in text else ''
+            new_part = str(item.name)
             if item.is_dir():
-                display += "/"
-            completions.append(display)
+                new_part += "/" 
+            completions.append(prefix + new_part)
             
         return completions
