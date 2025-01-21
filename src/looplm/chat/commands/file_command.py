@@ -200,30 +200,58 @@ class FileProcessor(CommandProcessor):
         Returns:
             List of completion suggestions
         """
-        path = Path(text)
-        
-        # Handle absolute paths
-        if path.is_absolute():
-            base = path.parent
-        else:
-            # Try both cwd and base_path
-            cwd_base = Path.cwd() / path.parent
-            base_path_base = self.base_path / path.parent
+        try: 
+            path = Path(text)
             
-            base = cwd_base if cwd_base.exists() else base_path_base
+            if text.endswith('/'):
+                base = path
+                prefix = text
+                pattern = "*"
+            else:
+                base = path.parent
+                prefix = text[:text.rfind('/') + 1] if '/' in text else ''
+                pattern = f"{path.name}*" if path.name else "*"
+            
+            # Handle absolute paths
+            if path.is_absolute():
+                base = base if base.exists() else Path('/')
+            else:
+                # Try both cwd and base_path
+                cwd_base = Path.cwd() / base
+                base_path_base = self.base_path / base
+                base = cwd_base if cwd_base.exists() else base_path_base
+                if not base.exists(): 
+                    base = Path('.')
+
+            # if not base.exists():
+            #     return []
+
+            completions = []
+            try: 
+                for item in base.glob(pattern):
+                    new_part = item.name
+                    # Add type indicator (D/F) with color
+                    if item.is_dir():
+                        display = f"\033[44;97m D \033[0m {new_part}" # bright blue background with white text
+                    else:
+                        display = f"\033[100;97m F \033[0m {new_part}" # gray background with white text
+                    completions.append((prefix + new_part, display))
+            except (PermissionError, OSError):
+                pass
+
+            return sorted(completions)
         
-        if not base.exists():
+        except Exception:
             return []
-            
         # Get matching files
-        pattern = f"{path.name}*" if path.name else "*"
-        completions = []
+        # pattern = f"{path.name}*" if path.name else "*"
+        # completions = []
         
-        for item in base.glob(pattern):
-            prefix = text[:text.rfind('/') + 1] if '/' in text else ''
-            new_part = str(item.name)
-            if item.is_dir():
-                new_part += "/" 
-            completions.append(prefix + new_part)
+        # for item in base.glob(pattern):
+        #     prefix = text[:text.rfind('/') + 1] if '/' in text else ''
+        #     new_part = str(item.name)
+        #     if item.is_dir():
+        #         new_part += "/" 
+        #     completions.append(prefix + new_part)
             
-        return completions
+        # return completions

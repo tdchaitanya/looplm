@@ -100,26 +100,27 @@ class ConversationHandler:
     def _stream_markdown(self, content: str, live: Live) -> None:
         """Update live display with markdown-formatted content"""
         try:
-            markdown = Markdown(content)
+            # markdown = Markdown(content)
+            markdown = Markdown(content, code_theme='monokai')
 
-            panel = Panel(
-                markdown,
-                style=Style(bgcolor="rgb(40,44,52)"),
-                border_style="dim white",
-                padding=(1, 2),
-                expand=True,
-            )
-            live.update(panel, refresh=True)
+            # panel = Panel(
+            #     markdown,
+            #     style=Style(bgcolor="rgb(40,44,52)"),
+            #     border_style="dim white",
+            #     padding=(1, 2),
+            #     expand=True,
+            # )
+            live.update(markdown, refresh=True)
         except Exception:
             text = Text(content)
-            panel = Panel(
-                text,
-                style=Style(bgcolor="rgb(40,44,52)"),
-                border_style="dim white",
-                padding=(1, 2),
-                expand=True,
-            )
-            live.update(panel)
+            # panel = Panel(
+            #     text,
+            #     style=Style(bgcolor="rgb(40,44,52)"),
+            #     border_style="dim white",
+            #     padding=(1, 2),
+            #     expand=True,
+            # )
+            live.update(text)
 
     def handle_prompt(
         self, prompt: str, provider: Optional[str] = None, model: Optional[str] = None

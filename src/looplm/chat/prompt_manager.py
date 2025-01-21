@@ -10,6 +10,7 @@ from prompt_toolkit.document import Document
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
+from prompt_toolkit.formatted_text import ANSI
 from rich.console import Console
 from typing import List, Optional
 from prompt_toolkit.completion import Completer, Completion
@@ -49,24 +50,40 @@ class CommandCompleter(Completer):
         # Get text after @ symbol
         after_at = text[at_pos:]
         
-        # Get completions from registry
-        completions = self.registry.get_completions(after_at)
-        
         # Calculate start position
         if '(' in after_at:
-            # Inside command arguments
-            arg_start = after_at.find('(') + 1
-            start_pos = -len(after_at[arg_start:])
+            cmd_name = after_at[1:after_at.find('(')]
+            path_text = after_at[after_at.find('(')+1:]
+            # Get processor for command
+            processor = self.registry.get_processor(cmd_name)
+            if processor:
+                # Get completion from processor
+                completions = processor.get_completions(path_text)
+                # start position calculation
+                start_pos = -len(path_text)
+
+                for completion_tuple in completions:
+                    if isinstance(completion_tuple, tuple):
+                        completion_text, display_text = completion_tuple
+                        yield Completion(
+                            completion_text,
+                            start_position=start_pos,
+                            display=ANSI(display_text),
+                        )
+                    else:
+                        # Handle case where completion isn't a tuple
+                        yield Completion(
+                            completion_tuple,
+                            start_position=start_pos
+                        )
+                
         else:
-            # At command name
-            start_pos = -len(after_at)
-            
-        for completion in completions:
-            yield Completion(
-                completion,
-                start_position=start_pos,
-                display=completion
-            )
+            completions = self.registry.get_completions(after_at)
+            for completion in completions:
+                yield Completion(
+                    completion,
+                    start_position=-len(after_at),
+                )
 
 
 
@@ -179,6 +196,7 @@ class PromptManager:
             """ Auto-close parentheses """
             event.current_buffer.insert_text('()')
             event.current_buffer.cursor_left()
+            event.current_buffer.start_completion()
 
         @kb.add('"')
         def _(event):
@@ -190,6 +208,12 @@ class PromptManager:
                 buf.insert_text('""')
                 buf.cursor_left()
         
+        @kb.add('/')
+        def _(event):
+            """Auto-trigger completion after slash in paths""" 
+            event.current_buffer.insert_text('/')
+            event.current_buffer.start_completion()
+
         # Initialize prompt session with command completion
         self.session = PromptSession(
             history=FileHistory(history_file),
@@ -209,13 +233,30 @@ class PromptManager:
             ("class:prompt", "User ► ")
         ]
 
-    def get_input(self, prompt_str: str = "") -> str:
+    def get_input(self, prompt_str: str = "", key_bindings=None) -> str:
         """Get user input with completion and history"""
         try:
+            if key_bindings:
+                combined_bindings = KeyBindings()
+
+                # Copy existing bindings
+                if self.session.key_bindings:
+                    for binding in self.session.key_bindings.bindings:
+                        combined_bindings.add(*binding.keys)(binding.handler)
+
+                # Add new bindings
+                for binding in key_bindings.bindings:
+                    combined_bindings.add(*binding.keys)(binding.handler)
+                kb = combined_bindings
+            
+            else:
+                kb = self.session.key_bindings
+
             result = self.session.prompt(
                 self.create_prompt_fragments(prompt_str),
                 style=self.style,
                 complete_in_thread=True,
+                key_bindings=kb
             )
             return result.strip()
         except KeyboardInterrupt:

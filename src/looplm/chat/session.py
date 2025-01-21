@@ -94,6 +94,7 @@ class ChatSession:
     messages: List[Message] = field(default_factory=list)
     total_usage: TokenUsage = field(default_factory=TokenUsage)
     base_path: Path = field(default_factory=lambda: Path(os.getcwd()))
+    latest_response: Optional[str] = None
 
     # Configuration
     console: Console = field(
@@ -234,24 +235,24 @@ class ChatSession:
         try:
             markdown = Markdown(content)
 
-            panel = Panel(
-                markdown,
-                style=Style(bgcolor="rgb(40,44,52)"),
-                border_style="dim white",
-                padding=(1, 2),
-                expand=True,
-            )
-            live.update(panel, refresh=True)
+            # panel = Panel(
+            #     markdown,
+            #     style=Style(bgcolor="rgb(40,44,52)"),
+            #     border_style="none",
+            #     padding=(1, 2),
+            #     expand=True,
+            # )
+            live.update(markdown, refresh=True)
         except Exception:
             text = Text(content)
-            panel = Panel(
-                text,
-                style=Style(bgcolor="rgb(40,44,52)"),
-                border_style="dim white",
-                padding=(1, 2),
-                expand=True,
-            )
-            live.update(panel)
+            # panel = Panel(
+            #     text,
+            #     style=Style(bgcolor="rgb(40,44,52)"),
+            #     border_style="none",
+            #     padding=(1, 2),
+            #     expand=True,
+            # )
+            live.update(text)
 
     def clear_history(self, keep_system_prompt: bool = True):
         """Clear chat history"""
@@ -361,6 +362,8 @@ class ChatSession:
                 accumulated_text += content
                 self._stream_markdown(accumulated_text, live)
 
+            self.latest_response = accumulated_text
+
             # Add response to history with token usage
             token_usage = TokenUsage(
                 input_tokens=chunk.usage.prompt_tokens,
@@ -385,7 +388,6 @@ class ChatSession:
                     f"Output: {token_usage.output_tokens}, "
                     f"Total: {token_usage.total_tokens}[/dim]"
                 )
-
             return accumulated_text
 
     def _handle_normal_response(
@@ -398,6 +400,8 @@ class ChatSession:
         )
 
         content = response.choices[0].message.content
+        self.latest_response = content
+
         token_usage = TokenUsage(
             input_tokens=response.usage.prompt_tokens,
             output_tokens=response.usage.completion_tokens,
@@ -425,7 +429,6 @@ class ChatSession:
                 f"Output: {token_usage.output_tokens}, "
                 f"Total: {token_usage.total_tokens}[/dim]"
             )
-
         return content
 
     def to_dict(self) -> Dict:

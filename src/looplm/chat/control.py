@@ -383,6 +383,10 @@ class CommandHandler:
         if not self.session_manager.active_session:
             # session = self.session_manager.create_session()
             session = self._create_new_session()
+
+            # Connect session to console for clipboard access
+            self.console.set_current_session(session)
+            
             # Set default system prompt
             default_prompt = self.prompts_manager.get_prompt("default")
             session.set_system_prompt(default_prompt)
