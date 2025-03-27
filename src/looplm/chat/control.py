@@ -295,19 +295,20 @@ class CommandHandler:
                 self.console.display_error("Prompt not found")
 
         elif choice == "2":
-            # Create new prompt
-            new_prompt = Prompt.ask("Enter new system prompt")
-            save = Prompt.ask(
-                "Save this prompt? (y/n)", choices=["y", "n"], default="n"
-            )
-
-            if save.lower() == "y":
-                name = Prompt.ask("Enter name for this prompt")
-                self.prompts_manager.save_prompt(name, new_prompt)
-                self.console.display_success(f"Prompt saved as '{name}'")
-
-            session.set_system_prompt(new_prompt)
-            self.console.display_success("System prompt updated")
+            # Create new prompt using multi-line input
+            new_prompt = self._get_multiline_input()
+            if new_prompt:  # Only proceed if we got input
+                save = Prompt.ask(
+                    "Save this prompt? (y/n)", choices=["y", "n"], default="n"
+                )
+    
+                if save.lower() == "y":
+                    name = Prompt.ask("Enter name for this prompt")
+                    self.prompts_manager.save_prompt(name, new_prompt)
+                    self.console.display_success(f"Prompt saved as '{name}'")
+    
+                session.set_system_prompt(new_prompt)
+                self.console.display_success("System prompt updated")
 
         elif choice == "3":
             # Save current prompt
@@ -422,7 +423,40 @@ class CommandHandler:
 
             except Exception as e:
                 self.console.display_error(str(e))
-
+    
+    def _get_multiline_input(self, current_text: str = "") -> str:
+        """Get multi-line input from user with instructions
+        
+        Args:
+            current_text: Optional existing text to pre-fill
+            
+        Returns:
+            str: Complete multi-line input
+        """
+        self.console.display_info("\nEnter your prompt. Type ':done' on a new line to finish.")
+        self.console.display_info("To cancel, type ':cancel' or use Ctrl+C")
+        
+        lines = []
+        if current_text:
+            lines.extend(current_text.split('\n'))
+            for line in lines:
+                self.console.display_info(line)
+        
+        while True:
+            try:
+                line = Prompt.ask("", default="")
+                # Check for termination commands
+                if line.strip().lower() == ':done':
+                    break
+                if line.strip().lower() == ':cancel':
+                    return ""
+                lines.append(line)
+            except KeyboardInterrupt:
+                self.console.display_info("\nCancelled input.")
+                return ""
+                
+        return "\n".join(lines)
+        
     def _create_new_session(self) -> ChatSession:
         """Create a new session with provider/model overrides if specified"""
         session = self.session_manager.create_session()

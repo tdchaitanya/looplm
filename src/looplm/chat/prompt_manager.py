@@ -2,7 +2,6 @@
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple
-
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import Completer, Completion, PathCompleter, WordCompleter
@@ -84,8 +83,6 @@ class CommandCompleter(Completer):
                     completion,
                     start_position=-len(after_at),
                 )
-
-
 
 class FilePathCompleter(Completer):
     """Completer for @file directives with path completion"""
@@ -191,6 +188,32 @@ class PromptManager:
         # Setup key bindings
         kb = KeyBindings()
         
+        @kb.add('enter')
+        def _(event):
+            """Submit on Enter if the line isn't empty"""
+            if event.current_buffer.text.strip():
+                event.current_buffer.validate_and_handle()        
+
+        # @kb.add('c-enter', 'enter')
+        # def _(event):
+        #     """Insert newline on Ctrl+Enter"""
+        #     event.current_buffer.insert_text('\n')        
+
+        @kb.add('c-v')
+        def _(event):
+            """Handle paste event with proper newline handling"""
+            app = get_app()
+            if app.clipboard.get_data():
+                text = app.clipboard.get_data().text
+                # Normalize newlines and preserve them
+                text = text.replace('\r\n', '\n').replace('\r', '\n')
+                event.current_buffer.insert_text(text)
+
+        @kb.add('escape', 'enter')
+        def _(event):
+            """Insert newline on Alt+Enter/Esc+Enter"""
+            event.current_buffer.insert_text('\n')
+            
         @kb.add('(')
         def _(event):
             """ Auto-close parentheses """
@@ -198,6 +221,7 @@ class PromptManager:
             event.current_buffer.cursor_left()
             event.current_buffer.start_completion()
 
+        
         @kb.add('"')
         def _(event):
             """ Auto-close quotes """
@@ -223,6 +247,7 @@ class PromptManager:
             complete_while_typing=True,
             key_bindings=kb,
             complete_in_thread=True,
+            multiline=True,
         )
 
     def create_prompt_fragments(self, prompt_str: str):
@@ -234,7 +259,20 @@ class PromptManager:
         ]
 
     def get_input(self, prompt_str: str = "", key_bindings=None) -> str:
-        """Get user input with completion and history"""
+        """Get user input with completion and history
+        
+        Supports both interactive multiline input and pasted multiline content.
+        - Enter: Submit the input
+        - Ctrl+Enter/Alt+Enter: Insert a new line
+        - Ctrl+V or paste: Paste content, preserving line breaks
+        
+        Args:
+            prompt_str: The prompt string to display
+            key_bindings: Optional additional key bindings
+            
+        Returns:
+            str: The user input with preserved newlines, stripped of trailing whitespace
+        """
         try:
             if key_bindings:
                 combined_bindings = KeyBindings()
@@ -256,7 +294,8 @@ class PromptManager:
                 self.create_prompt_fragments(prompt_str),
                 style=self.style,
                 complete_in_thread=True,
-                key_bindings=kb
+                key_bindings=kb,
+                multiline=True,
             )
             return result.strip()
         except KeyboardInterrupt:
