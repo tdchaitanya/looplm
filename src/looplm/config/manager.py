@@ -281,12 +281,17 @@ class ConfigManager:
 
         if config.get("default_provider") == provider.value:
             config.pop("default_provider", None)
-            config.pop("default_model", None)
+            
+            # Remove default_model from root config if it exists
+            if "default_model" in config:
+                config.pop("default_model", None)
 
             remaining = list(config.get("providers", {}).keys())
             if remaining:
                 config["default_provider"] = remaining[0]
-                config["default_model"] = config["providers"][remaining[0]]["model"]
+                # Use "default_model" key instead of "model"
+                if "default_model" in config["providers"][remaining[0]]:
+                    config["default_model"] = config["providers"][remaining[0]]["default_model"]
 
         self.save_secrets(secrets)
         self.save_config(config)
