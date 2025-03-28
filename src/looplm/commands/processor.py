@@ -1,9 +1,10 @@
-# src/looplm/chat/commands/processor.py
+# src/looplm/commands/processor.py
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional, Any
 from pathlib import Path
+
 
 @dataclass
 class ProcessingResult:
@@ -11,6 +12,7 @@ class ProcessingResult:
     content: str
     error: Optional[str] = None
     metadata: Optional[dict] = None
+
 
 class CommandProcessor(ABC):
     """Base class for command processors"""

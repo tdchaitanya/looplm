@@ -1,5 +1,6 @@
 # src/looplm/conversation/handler.py
 import os
+from pathlib import Path
 from typing import Optional, Tuple
 
 from litellm import completion
@@ -13,7 +14,7 @@ from rich.text import Text
 
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
-from ..preprocessor.files import FilePreprocessor
+from ..commands import CommandManager
 
 
 class ConversationHandler:
@@ -29,12 +30,8 @@ class ConversationHandler:
             self.console = console
             self.console.width = None
         self.config_manager = ConfigManager()
-        self.file_preprocessor = FilePreprocessor(base_path=os.getcwd())
-
-    def __del__(self):
-        """Cleanup when handler is destroyed."""
-        if hasattr(self, "file_preprocessor"):
-            self.file_preprocessor.cleanup()
+        # Use command manager instead of file preprocessor
+        self.command_manager = CommandManager(base_path=Path.cwd())
 
     def _get_provider_config(self, provider: ProviderType) -> dict:
         """Get full provider configuration including custom name if it's OTHER type"""
@@ -44,15 +41,14 @@ class ConversationHandler:
         return providers[provider]
 
     def _setup_environment(self, provider: ProviderType) -> None:
-        """Set up environment variables for the specified provide"""
-
+        """Set up environment variables for the specified provider"""
         credentials = self.config_manager.get_provider_credentials(provider)
         for key, value in credentials.items():
             os.environ[key] = value
 
     def _get_provider_and_model(
         self, provider_name: Optional[str] = None, model_name: Optional[str] = None
-    ) -> Tuple[ProviderType, str]:
+    ) -> Tuple[ProviderType, str, Optional[str]]:
         """Get provider and model to use"""
         if provider_name:
             try:
@@ -93,16 +89,11 @@ class ConversationHandler:
             else None
         )
         return provider, default_model, actual_name
-        # if model_name:
-        #     return provider, model_name
-        # return provider, default_model
 
     def _stream_markdown(self, content: str, live: Live) -> None:
         """Update live display with markdown-formatted content"""
         try:
-            # markdown = Markdown(content)
             markdown = Markdown(content, code_theme='monokai')
-
             # panel = Panel(
             #     markdown,
             #     style=Style(bgcolor="rgb(40,44,52)"),
@@ -120,6 +111,7 @@ class ConversationHandler:
             #     padding=(1, 2),
             #     expand=True,
             # )
+
             live.update(text)
 
     def handle_prompt(
@@ -128,17 +120,17 @@ class ConversationHandler:
         """
         Handle a user prompt and stream the response.
 
-        The prompt may contain @file directives which will be processed before sending
+        The prompt may contain commands (@file, @folder, @github) which will be processed before sending
         to the LLM provider.
 
         Args:
-            prompt: User prompt, possibly containing @file directives
+            prompt: User prompt, possibly containing commands
             provider: Optional provider override
             model: Optional model override
         """
         try:
-
-            processed_prompt = self.file_preprocessor.process_prompt(prompt)
+            # Process the prompt using the command manager
+            processed_prompt = self.command_manager.process_text_sync(prompt)
 
             provider_type, model_name, custom_provider = self._get_provider_and_model(
                 provider, model

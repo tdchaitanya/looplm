@@ -81,7 +81,10 @@ def cli(prompt, provider, model, configure, reset, reset_provider, set_default, 
                 else:
                     console.print("\nSession Closed", style="bold red")
         except Exception as e:
-            console.print(f"\nFailed to process request: {str(e)}", style="bold red")
+            # Use Rich's escape function to escape any markup in the error message
+            from rich.markup import escape
+            error_message = escape(str(e))
+            console.print(f"\nFailed to process request: {error_message}", style="bold red")
             raise click.Abort()
 
         return
@@ -186,7 +189,9 @@ def cli(prompt, provider, model, configure, reset, reset_provider, set_default, 
             handler = ConversationHandler(console)
             handler.handle_prompt(prompt_text, provider=provider, model=model)
         except Exception as e:
-            console.print(f"\nFailed to process request: {str(e)}", style="bold red")
+            from rich.markup import escape
+            error_message = escape(str(e))
+            console.print(f"\nFailed to process request: {error_message}", style="bold red")
             raise click.Abort()
     else:
         show_status()
@@ -208,9 +213,31 @@ def show_status():
         status = "DEFAULT" if provider == default_provider else "Configured"
         table.add_row(display_name, config["default_model"], status)
 
+    # Get available commands
+    from looplm.commands import CommandManager
+    command_manager = CommandManager()
+    available_commands = command_manager.get_available_commands()
+    
     console.print("\n🔄 LoopLM", style="bold blue")
     console.print(table)
 
+    # Display available commands
+    command_table = Table(title="Available Commands")
+    command_table.add_column("Command", style="cyan")
+    command_table.add_column("Description", style="white")
+    
+    for cmd_name in sorted(available_commands):
+        processor = command_manager.get_processor(cmd_name)
+        if processor:
+            command_table.add_column(f"@{cmd_name}(arg)", processor.description)
+    
+    # Add shell command
+    shell_processor = command_manager.get_processor("shell")
+    if shell_processor:
+        command_table.add_row("$(command)", shell_processor.description)
+        
+    console.print(command_table)
+    
     console.print("\nUsage:", style="bold")
     console.print(
         '  looplm "your prompt"                        - Use default provider and model'
@@ -233,7 +260,6 @@ def show_status():
     console.print("  looplm --reset-provider <name> - Reset specific provider")
     console.print("  looplm --set-default <name>   - Set default provider and model")
     console.print("  looplm --status               - Show current status")
-
 
 def main():
     """Main entry point for the CLI"""

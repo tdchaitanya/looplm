@@ -1,7 +1,9 @@
-# src/looplm/chat/prompt_manager.py
+# src/looplm/chat/prompt_manager.py - Updated for new command system
+
 import os
 from pathlib import Path
 from typing import List, Optional, Tuple
+
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import Completer, Completion, PathCompleter, WordCompleter
@@ -11,23 +13,20 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import ANSI
 from rich.console import Console
-from typing import List, Optional
-from prompt_toolkit.completion import Completer, Completion
-from .commands.registry import CommandRegistry
-from .commands.file_command import FileProcessor
-from .commands.folder_command import FolderProcessor
-from .commands.github_command import GithubProcessor
+from looplm.commands import CommandManager
+
 
 class CommandCompleter(Completer):
     """Completer for @ commands with context-aware completion"""
 
-    def __init__(self, registry: CommandRegistry):
-        """Initialize completer with command registry
+    def __init__(self, base_path: Path = None):
+        """Initialize completer with command manager
         
         Args:
-            command_registry: Registry of available commands
+            base_path: Base path for resolving relative paths
         """
-        self.registry = registry
+        # Use the singleton CommandManager instead of creating a new registry
+        self.command_manager = CommandManager(base_path=base_path or Path.cwd())
 
     def get_completions(self, document, complete_event):
         """Get completions for current input
@@ -54,7 +53,7 @@ class CommandCompleter(Completer):
             cmd_name = after_at[1:after_at.find('(')]
             path_text = after_at[after_at.find('(')+1:]
             # Get processor for command
-            processor = self.registry.get_processor(cmd_name)
+            processor = self.command_manager.get_processor(cmd_name)
             if processor:
                 # Get completion from processor
                 completions = processor.get_completions(path_text)
@@ -77,103 +76,27 @@ class CommandCompleter(Completer):
                         )
                 
         else:
-            completions = self.registry.get_completions(after_at)
+            # Get completions from the registry's get_completions method
+            completions = self.command_manager.registry.get_completions(after_at)
             for completion in completions:
                 yield Completion(
                     completion,
                     start_position=-len(after_at),
                 )
 
-class FilePathCompleter(Completer):
-    """Completer for @file directives with path completion"""
-
-    def __init__(self, base_path: str = None):
-        self.base_path = Path(base_path or os.getcwd())
-        self.additional_paths = [Path.cwd(), Path.home()]
-        if self.base_path not in self.additional_paths:
-            self.additional_paths.append(self.base_path)
-
-    def get_completions(self, document, complete_event):
-        text = document.text_before_cursor
-        
-        if "@file" not in text:
-            return
-
-        # Find the position after @file
-        file_pos = text.rfind("@file")
-        after_file = text[file_pos:]
-        
-        # Get the word being completed
-        if '("' in after_file:
-            word_start = after_file.find('("') + 2
-            closing = '")'
-        elif "(" in after_file:
-            word_start = after_file.find('(') + 1
-            closing = ')'
-        else:
-            word_start = len("@file ")
-            if len(after_file) <= word_start:
-                yield Completion('(', start_position=0)
-                return
-            closing = ''
-            
-        # Get the path being completed
-        current_input = after_file[word_start:]
-        path = current_input.split(closing)[0] if closing in current_input else current_input
-        path = path.strip()
-
-        # Get completions from all base paths
-        seen = set()
-        for base_dir in self.additional_paths:
-            try:
-                # Get all matching files
-                pattern = f"*{path}*" if path else "*"
-                for file_path in base_dir.glob(pattern):
-                    if file_path.name in seen:
-                        continue
-                        
-                    seen.add(file_path.name)
-                    rel_path = str(file_path.relative_to(base_dir))
-                    
-                    if path and not rel_path.startswith(path):
-                        continue
-                        
-                    # If it's an exact match, don't yield completion
-                    if rel_path == path:
-                        continue
-
-                    # Add closing characters for files
-                    display_meta = str(file_path)
-                    if file_path.is_file() and closing and closing not in current_input:
-                        rel_path += closing
-                    
-                    # Calculate the start position to replace only what needs to be replaced
-                    replace_start = -len(path) if path else 0
-                    
-                    yield Completion(
-                        rel_path,
-                        start_position=replace_start,
-                        display=file_path.name,
-                        display_meta=display_meta
-                    )
-            except Exception:
-                continue
-
 
 class PromptManager:
     """Manages prompt toolkit integration with custom completions"""
 
     def __init__(self, console: Console = None, base_path: str = None):
+        """Initialize prompt manager
+        
+        Args:
+            console: Optional rich console for output
+            base_path: Base path for resolving file paths
+        """
         self.console = console or Console()
         self.base_path = base_path or os.getcwd()
-        
-        # Initialize command registry
-        self.command_registry = CommandRegistry(base_path=Path(self.base_path))
-        
-        # Register command processors
-        self.command_registry.register(FileProcessor)
-        self.command_registry.register(FolderProcessor)
-        self.command_registry.register(GithubProcessor)
         
         # Setup prompt styling
         self.style = Style.from_dict({
@@ -188,32 +111,6 @@ class PromptManager:
         # Setup key bindings
         kb = KeyBindings()
         
-        @kb.add('enter')
-        def _(event):
-            """Submit on Enter if the line isn't empty"""
-            if event.current_buffer.text.strip():
-                event.current_buffer.validate_and_handle()        
-
-        # @kb.add('c-enter', 'enter')
-        # def _(event):
-        #     """Insert newline on Ctrl+Enter"""
-        #     event.current_buffer.insert_text('\n')        
-
-        @kb.add('c-v')
-        def _(event):
-            """Handle paste event with proper newline handling"""
-            app = get_app()
-            if app.clipboard.get_data():
-                text = app.clipboard.get_data().text
-                # Normalize newlines and preserve them
-                text = text.replace('\r\n', '\n').replace('\r', '\n')
-                event.current_buffer.insert_text(text)
-
-        @kb.add('escape', 'enter')
-        def _(event):
-            """Insert newline on Alt+Enter/Esc+Enter"""
-            event.current_buffer.insert_text('\n')
-            
         @kb.add('(')
         def _(event):
             """ Auto-close parentheses """
@@ -221,7 +118,6 @@ class PromptManager:
             event.current_buffer.cursor_left()
             event.current_buffer.start_completion()
 
-        
         @kb.add('"')
         def _(event):
             """ Auto-close quotes """
@@ -242,12 +138,11 @@ class PromptManager:
         self.session = PromptSession(
             history=FileHistory(history_file),
             auto_suggest=AutoSuggestFromHistory(),
-            completer=CommandCompleter(self.command_registry),
+            completer=CommandCompleter(base_path=Path(self.base_path)),
             style=self.style,
             complete_while_typing=True,
             key_bindings=kb,
             complete_in_thread=True,
-            multiline=True,
         )
 
     def create_prompt_fragments(self, prompt_str: str):
@@ -259,20 +154,7 @@ class PromptManager:
         ]
 
     def get_input(self, prompt_str: str = "", key_bindings=None) -> str:
-        """Get user input with completion and history
-        
-        Supports both interactive multiline input and pasted multiline content.
-        - Enter: Submit the input
-        - Ctrl+Enter/Alt+Enter: Insert a new line
-        - Ctrl+V or paste: Paste content, preserving line breaks
-        
-        Args:
-            prompt_str: The prompt string to display
-            key_bindings: Optional additional key bindings
-            
-        Returns:
-            str: The user input with preserved newlines, stripped of trailing whitespace
-        """
+        """Get user input with completion and history"""
         try:
             if key_bindings:
                 combined_bindings = KeyBindings()
@@ -294,8 +176,7 @@ class PromptManager:
                 self.create_prompt_fragments(prompt_str),
                 style=self.style,
                 complete_in_thread=True,
-                key_bindings=kb,
-                multiline=True,
+                key_bindings=kb
             )
             return result.strip()
         except KeyboardInterrupt:

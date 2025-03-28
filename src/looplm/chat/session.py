@@ -1,4 +1,5 @@
-# src/looplm/chat/session.py
+# src/looplm/chat/session.py - Updated for new command system
+
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -17,10 +18,8 @@ from rich.text import Text
 
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
-from .commands.registry import CommandRegistry
-from .commands.file_command import FileProcessor
-from .commands.folder_command import FolderProcessor
-from .commands.github_command import GithubProcessor
+from ..commands import CommandManager
+
 
 @dataclass
 class TokenUsage:
@@ -114,14 +113,6 @@ class ChatSession:
             self.provider = provider
             self.model = model
             self.custom_provider = custom_provider
-        
-        # Initialize command registry
-        self.command_registry = CommandRegistry(base_path=self.base_path)
-        
-        # Register command processors
-        self.command_registry.register(FileProcessor)
-        self.command_registry.register(FolderProcessor)
-        self.command_registry.register(GithubProcessor)
 
     def _get_provider_and_model(
         self, provider_name: Optional[str] = None, model_name: Optional[str] = None
@@ -234,24 +225,9 @@ class ChatSession:
         """Update live display with markdown content"""
         try:
             markdown = Markdown(content)
-
-            # panel = Panel(
-            #     markdown,
-            #     style=Style(bgcolor="rgb(40,44,52)"),
-            #     border_style="none",
-            #     padding=(1, 2),
-            #     expand=True,
-            # )
             live.update(markdown, refresh=True)
         except Exception:
             text = Text(content)
-            # panel = Panel(
-            #     text,
-            #     style=Style(bgcolor="rgb(40,44,52)"),
-            #     border_style="none",
-            #     padding=(1, 2),
-            #     expand=True,
-            # )
             live.update(text)
 
     def clear_history(self, keep_system_prompt: bool = True):
@@ -281,6 +257,7 @@ class ChatSession:
             content: Message content, may contain @ commands
             stream: Whether to stream the response
             show_tokens: Whether to show token usage
+            debug: Whether to debug command processing without sending to LLM
 
         Returns:
             str: Model's response
@@ -289,8 +266,10 @@ class ChatSession:
             Exception: If there's an error sending the message or processing commands
         """
         try:
+            # Process all commands in the message using the CommandManager
+            command_manager = CommandManager(base_path=self.base_path)
+            
             # Process all commands in the message
-            # Use sync version or run async in sync context
             import asyncio
             try:
                 loop = asyncio.get_event_loop()
@@ -299,8 +278,9 @@ class ChatSession:
                 asyncio.set_event_loop(loop)
                 
             processed_content = loop.run_until_complete(
-                self.command_registry.process_text(content)
+                command_manager.process_text(content)
             )
+            
             if debug:
                 # In debug mode, just display the processed content
                 self.console.print("\nProcessed Content:", style="bold blue")
@@ -328,13 +308,13 @@ class ChatSession:
                 return self._handle_normal_response(actual_model, messages, show_tokens)
 
         except Exception as e:
-            raise Exception(f"Error sending message: {str(e)}")
-
- 
+            from rich.markup import escape
+            error_message = escape(str(e))
+            raise Exception(f"Error sending message: {error_message}")
+        
     def __del__(self):
         """Cleanup when session is destroyed."""
-        if hasattr(self, "file_preprocessor"):
-            self.file_preprocessor.cleanup()
+        pass
 
     def _handle_streaming_response(
         self, model: str, messages: List[Dict], show_tokens: bool = False

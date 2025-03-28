@@ -1,10 +1,11 @@
-# src/looplm/chat/commands/registry.py
+# src/looplm/commands/registry.py
 
 from typing import Dict, List, Optional, Type
 from pathlib import Path
 import re
 from .processor import CommandProcessor, ProcessingResult
 from .shell_command import ShellCommandProcessor
+
 
 class CommandRegistry:
     """Registry for command processors"""
@@ -20,7 +21,8 @@ class CommandRegistry:
         """
         self.base_path = base_path or Path.cwd()
         self._processors: Dict[str, CommandProcessor] = {}
-        self.shell_processor = ShellCommandProcessor(self.base_path)
+        shell_processor = ShellCommandProcessor(self.base_path)
+        self._processors[shell_processor.name] = shell_processor
         
     def register(self, processor_class: Type[CommandProcessor]) -> None:
         """Register a command processor
@@ -122,7 +124,14 @@ class CommandRegistry:
                 error_found = True
                 continue
                 
-            processed = await self.shell_processor.process(command)
+            # Get the shell processor from the registry
+            shell_processor = self.get_processor("shell")
+            if not shell_processor:
+                error_messages.append("Shell processor not found")
+                error_found = True
+                continue
+                
+            processed = await shell_processor.process(command)
             
             if processed.error:
                 error_found = True

@@ -1,9 +1,9 @@
-# src/looplm/chat/commands/github_command.py
+# src/looplm/commands/github_command.py
 import re
 from typing import List
 from gitingest import ingest
 import asyncio
-from ..commands.processor import CommandProcessor, ProcessingResult
+from .processor import CommandProcessor, ProcessingResult
 import os
 
 class GithubProcessor(CommandProcessor):

@@ -1,11 +1,11 @@
-# src/looplm/chat/commands/shell_command.py
+# src/looplm/commands/shell_command.py
 
 import asyncio
 import re
 from pathlib import Path
 from typing import List
 import shlex
-from ..commands.processor import CommandProcessor, ProcessingResult
+from .processor import CommandProcessor, ProcessingResult
 
 class ShellCommandProcessor(CommandProcessor):
     """Processor for $() shell commands"""
@@ -85,7 +85,7 @@ class ShellCommandProcessor(CommandProcessor):
                 )
             
             # Check for errors
-            if process.returncode != 0 or stderr:
+            if process.returncode != 0:
                 error_msg = stderr.decode('utf-8', errors='replace').strip()
                 if error_msg:
                     return ProcessingResult(
@@ -97,6 +97,7 @@ class ShellCommandProcessor(CommandProcessor):
                     error=f"Command failed with return code {process.returncode}"
                 )
             
+                
             # Format successful output
             output = stdout.decode('utf-8', errors='replace').strip()
             formatted_output =f"""

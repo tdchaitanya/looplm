@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Dict, List, Optional
 import pyperclip
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.filters import to_filter
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.prompt import Confirm, Prompt
@@ -13,7 +12,6 @@ from pathlib import Path
 from ..config.manager import ConfigManager
 from .prompt_manager import PromptManager
 from .session import ChatSession
-import sys
 
 class ChatConsole:
     """Handles chat UI rendering and interaction"""
@@ -61,6 +59,11 @@ class ChatConsole:
             status = "DEFAULT" if provider == default_provider else "Configured"
             provider_table.add_row(display_name, config["default_model"], status)
 
+        # Get available commands from the CommandManager
+        from looplm.commands import CommandManager
+        command_manager = CommandManager()
+        available_commands = command_manager.get_available_commands()
+        
         # Combined commands table
         commands_table = Table(
             title="LoopLM Commands & Shortcuts",
@@ -92,10 +95,17 @@ class ChatConsole:
 
         # Content commands
         commands_table.add_row("Content & Code", "", style="bold green")
-        commands_table.add_row("@file(path)", "Include file contents in the prompt")
-        commands_table.add_row("@folder(path)", "Include directory structure and files in the prompt")
-        commands_table.add_row("@github(url)", "Add code from a GitHub repository URL")
-        commands_table.add_row("$(command)", "Execute shell command and add the response to the prompt")
+
+        # Add command processors
+        for cmd_name in available_commands:
+            processor = command_manager.get_processor(cmd_name)
+            if processor:
+                if cmd_name == "shell":
+                    # Special handling for shell command
+                    commands_table.add_row("$(command)", processor.description)
+                else:
+                    # Standard @ commands
+                    commands_table.add_row(f"@{cmd_name}(path)", processor.description)
 
         # Keyboard shortcuts
         commands_table.add_row("Keyboard Shortcuts", "", style="bold magenta")
@@ -243,7 +253,10 @@ class ChatConsole:
 
     def display_error(self, message: str):
         """Display error message"""
-        self.console.print(f"\nError: {message}", style="bold red")
+        from rich.markup import escape
+        # Escape any Rich markup in the error message
+        safe_message = escape(message)
+        self.console.print(f"\nError: {safe_message}", style="bold red")
 
     def display_success(self, message: str):
         """Display success message"""

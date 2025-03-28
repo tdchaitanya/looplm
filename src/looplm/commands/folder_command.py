@@ -1,10 +1,10 @@
-# src/looplm/chat/commands/folder_command.py
+# src/looplm/commands/folder_command.py
 from pathlib import Path
-from typing import List
+from typing import List, Tuple, Union
 from gitingest import ingest
-import asyncio
 import os
-from ..commands.processor import CommandProcessor, ProcessingResult
+import asyncio
+from .processor import CommandProcessor, ProcessingResult
 
 class FolderProcessor(CommandProcessor):
     """Processor for @folder command"""
@@ -52,7 +52,6 @@ class FolderProcessor(CommandProcessor):
         """
         try:
             path = self._resolve_path(arg)
-
             loop = asyncio.get_event_loop()
             summary, tree, content = await loop.run_in_executor(None, ingest, str(path))
            
@@ -110,7 +109,7 @@ class FolderProcessor(CommandProcessor):
             f"  - Relative to base path: {base_path}"
         )
 
-    def get_completions(self, text: str) -> List[str]:
+    def get_completions(self, text: str) -> List[Union[str, Tuple[str, str]]]:
         """Get folder path completions
         
         Args:

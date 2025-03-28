@@ -1,13 +1,13 @@
-# src/looplm/chat/commands/file_command.py
+# src/looplm/commands/file_command.py
 
 import mimetypes
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 import aiofiles
 from urllib.parse import urlparse
 import aiohttp
 import os
-from ..commands.processor import CommandProcessor, ProcessingResult
+from .processor import CommandProcessor, ProcessingResult
 
 class FileProcessor(CommandProcessor):
     """Processor for @file command"""
@@ -65,7 +65,7 @@ class FileProcessor(CommandProcessor):
                 error=str(e)
             )
 
-    def _resolve_path(self, path: str) -> tuple[bool, str]:
+    def _resolve_path(self, path: str) -> Tuple[bool, str]:
         """Resolve file path or URL
         
         Args:
@@ -180,18 +180,11 @@ class FileProcessor(CommandProcessor):
             Formatted content string
         """
         tag_name = f"@file({os.path.basename(path)})"
-#         return f"""<{tag_name}>
-# Path: {path}
-
-# Content:
-# {content}
-# </{tag_name}>
-# """
         return f"""<{tag_name}>
 {content}
 </{tag_name}>
 """
-    def get_completions(self, text: str) -> List[str]:
+    def get_completions(self, text: str) -> List[Union[str, Tuple[str, str]]]:
         """Get file path completions
         
         Args:
@@ -223,9 +216,6 @@ class FileProcessor(CommandProcessor):
                 if not base.exists(): 
                     base = Path('.')
 
-            # if not base.exists():
-            #     return []
-
             completions = []
             try: 
                 for item in base.glob(pattern):
@@ -243,15 +233,3 @@ class FileProcessor(CommandProcessor):
         
         except Exception:
             return []
-        # Get matching files
-        # pattern = f"{path.name}*" if path.name else "*"
-        # completions = []
-        
-        # for item in base.glob(pattern):
-        #     prefix = text[:text.rfind('/') + 1] if '/' in text else ''
-        #     new_part = str(item.name)
-        #     if item.is_dir():
-        #         new_part += "/" 
-        #     completions.append(prefix + new_part)
-            
-        # return completions
