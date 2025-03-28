@@ -2,6 +2,7 @@
 from pathlib import Path
 from typing import List
 from gitingest import ingest
+import asyncio
 import os
 from ..commands.processor import CommandProcessor, ProcessingResult
 
@@ -51,7 +52,9 @@ class FolderProcessor(CommandProcessor):
         """
         try:
             path = self._resolve_path(arg)
-            summary, tree, content = ingest(str(path))
+
+            loop = asyncio.get_event_loop()
+            summary, tree, content = await loop.run_in_executor(None, ingest, str(path))
            
             tag_name = f"@folder({os.path.basename(str(path))})"
             result = f"""
