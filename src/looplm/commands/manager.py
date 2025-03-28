@@ -2,9 +2,8 @@
 
 import asyncio
 from pathlib import Path
-from typing import Dict, List, Optional, Type
-
-from .processor import CommandProcessor, ProcessingResult
+from typing import Dict, List, Optional, Type, Tuple
+from .processor import CommandProcessor
 from .registry import CommandRegistry
 
 
@@ -45,12 +44,14 @@ class CommandManager:
         from .file_command import FileProcessor
         from .folder_command import FolderProcessor
         from .github_command import GithubProcessor
+        from .image_command import ImageProcessor  
         
         # Register default processors
         # Note: ShellCommandProcessor is already registered by the registry
         self.registry.register(FileProcessor)
         self.registry.register(FolderProcessor)
         self.registry.register(GithubProcessor)
+        self.registry.register(ImageProcessor) 
     
     def register_command(self, processor_class: Type[CommandProcessor]):
         """Register a custom command processor
@@ -79,28 +80,32 @@ class CommandManager:
         """
         return list(self.registry._processors.keys())
     
-    async def process_text(self, text: str) -> str:
+    async def process_text(self, text: str) -> Tuple[str, List[Dict]]:
         """Process text with all registered commands
         
         Args:
             text: Input text containing commands
             
         Returns:
-            Processed text with command outputs
+            Tuple of (processed_text, image_metadata)
+                - processed_text: Text with command outputs
+                - image_metadata: List of image metadata for vision models
             
         Raises:
             Exception: If command processing fails
         """
         return await self.registry.process_text(text)
     
-    def process_text_sync(self, text: str) -> str:
+    def process_text_sync(self, text: str) -> Tuple[str, List[Dict]]:
         """Synchronous wrapper for process_text
         
         Args:
             text: Input text containing commands
             
         Returns:
-            Processed text with command outputs
+            Tuple of (processed_text, image_metadata)
+                - processed_text: Text with command outputs
+                - image_metadata: List of image metadata for vision models
             
         Raises:
             Exception: If command processing fails
@@ -112,4 +117,3 @@ class CommandManager:
             asyncio.set_event_loop(loop)
             
         return loop.run_until_complete(self.process_text(text))
-        

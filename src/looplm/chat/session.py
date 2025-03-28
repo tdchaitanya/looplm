@@ -250,7 +250,7 @@ class ChatSession:
         """
         Send a message and get response.
 
-        Handles command processing (@file, @folder, @github) before sending
+        Handles command processing (@file, @folder, @github, @image) before sending
         to the model.
 
         Args:
@@ -277,19 +277,26 @@ class ChatSession:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 
-            processed_content = loop.run_until_complete(
+            processed_result = loop.run_until_complete(
                 command_manager.process_text(content)
             )
+            
+            # Unpack the result - now includes processed text and image metadata
+            processed_content, image_metadata = processed_result
             
             if debug:
                 # In debug mode, just display the processed content
                 self.console.print("\nProcessed Content:", style="bold blue")
                 self.console.print(processed_content)
+                if image_metadata:
+                    self.console.print("\nImage Metadata:", style="bold magenta")
+                    for img in image_metadata:
+                        self.console.print(img)
                 return processed_content
             
             # Only proceed with the LLM if command processing succeeded
             self.config_manager._prepare_environment(self.provider.value)
-       
+    
             # Add user message
             user_msg = Message("user", processed_content)
             self.messages.append(user_msg)
@@ -299,8 +306,46 @@ class ChatSession:
             if self.provider == ProviderType.OTHER and self.custom_provider:
                 actual_model = f"{self.custom_provider}/{self.model}"
 
-            # Get messages for API -- only role and content
+            # Check if the model supports vision 
+            try:
+                import litellm
+                model_supports_vision = litellm.supports_vision(model=actual_model)
+            except Exception:
+                # If we can't import litellm or check, assume model doesn't support vision
+                model_supports_vision = False
+                self.console.print(
+                    f"\nWarning: Unable to verify if model {actual_model} supports vision. Proceeding with text-only input.",
+                    style="bold yellow"
+                )
+
+            # Get messages for API
             messages = self.get_messages_for_api()
+            
+            # If we have images and the model supports vision, convert message format
+            if image_metadata and model_supports_vision:
+                # Update the last user message to have content as an array with text and images
+                last_message = messages[-1]
+                if last_message["role"] == "user":
+                    # Create new content list with text and images
+                    content_list = [
+                        {
+                            "type": "text",
+                            "text": processed_content
+                        }
+                    ]
+                    
+                    # Add each image
+                    for img in image_metadata:
+                        content_list.append(img)
+                    
+                    # Replace content with the list
+                    last_message["content"] = content_list
+            elif image_metadata and not model_supports_vision:
+                # Warn that the model doesn't support images
+                self.console.print(
+                    f"\nWarning: Model {actual_model} does not support vision input. Images will be ignored.",
+                    style="bold yellow"
+                )
 
             if stream:
                 return self._handle_streaming_response(actual_model, messages, show_tokens)
@@ -310,8 +355,7 @@ class ChatSession:
         except Exception as e:
             from rich.markup import escape
             error_message = escape(str(e))
-            raise Exception(f"Error sending message: {error_message}")
-        
+            raise Exception(f"Error sending message: {error_message}")        
     def __del__(self):
         """Cleanup when session is destroyed."""
         pass

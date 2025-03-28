@@ -120,7 +120,7 @@ class ConversationHandler:
         """
         Handle a user prompt and stream the response.
 
-        The prompt may contain commands (@file, @folder, @github) which will be processed before sending
+        The prompt may contain commands (@file, @folder, @github, @image) which will be processed before sending
         to the LLM provider.
 
         Args:
@@ -130,7 +130,7 @@ class ConversationHandler:
         """
         try:
             # Process the prompt using the command manager
-            processed_prompt = self.command_manager.process_text_sync(prompt)
+            processed_content, image_metadata = self.command_manager.process_text_sync(prompt)
 
             provider_type, model_name, custom_provider = self._get_provider_and_model(
                 provider, model
@@ -138,17 +138,54 @@ class ConversationHandler:
 
             self._setup_environment(provider_type)
 
-            messages = [{"role": "user", "content": processed_prompt}]
+            # Prepare actual model name
+            actual_model = model_name
+            if provider_type == ProviderType.OTHER and custom_provider:
+                actual_model = f"{custom_provider}/{model_name}"
+            
+            # Check if the model supports vision
+            try:
+                import litellm
+                model_supports_vision = litellm.supports_vision(model=actual_model)
+            except Exception:
+                # If we can't import litellm or check, assume model doesn't support vision
+                model_supports_vision = False
+                self.console.print(
+                    f"\nWarning: Unable to verify if model {actual_model} supports vision. Proceeding with text-only input.",
+                    style="bold yellow"
+                )
+
+            # Create messages based on whether we have images
+            if image_metadata and model_supports_vision:
+                # Create content as an array with text and images
+                content_list = [
+                    {
+                        "type": "text",
+                        "text": processed_content
+                    }
+                ]
+                
+                # Add each image
+                for img in image_metadata:
+                    content_list.append(img)
+                
+                messages = [{"role": "user", "content": content_list}]
+            elif image_metadata and not model_supports_vision:
+                # Warn that the model doesn't support images
+                self.console.print(
+                    f"\nWarning: Model {actual_model} does not support vision input. Images will be ignored.",
+                    style="bold yellow"
+                )
+                messages = [{"role": "user", "content": processed_content}]
+            else:
+                # Standard text message
+                messages = [{"role": "user", "content": processed_content}]
 
             with Live(
                 "", refresh_per_second=4, console=self.console, auto_refresh=True
             ) as live:
                 live.console.width = None
                 accumulated_text = ""
-
-                actual_model = model_name
-                if provider_type == ProviderType.OTHER and custom_provider:
-                    actual_model = f"{custom_provider}/{model_name}"
 
                 response = completion(
                     model=actual_model, messages=trim_messages(messages), stream=True

@@ -1,6 +1,6 @@
 # src/looplm/commands/registry.py
 
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type, Tuple
 from pathlib import Path
 import re
 from .processor import CommandProcessor, ProcessingResult
@@ -100,16 +100,19 @@ class CommandRegistry:
             
         return processor.get_completions(current_arg)
 
-    async def process_text(self, text: str) -> str:
+    async def process_text(self, text: str) -> Tuple[str, List[Dict]]:
         """Process all commands in text while preserving original
         
         Args:
             text: Input text containing commands
-            
+        
         Returns:
-            Processed text with commands output appended
+            Tuple of (processed_text, list_of_image_metadata)
+                - processed_text: Text with commands output appended
+                - list_of_image_metadata: List of image metadata for vision models
         """
         processed_outputs = []
+        image_metadata = []
         error_messages = []
         error_found = False
         
@@ -152,6 +155,9 @@ class CommandRegistry:
                 error_messages.append(f"@{command} error: {processed.error}")
             else:
                 processed_outputs.append(processed.content)
+                # Check if this is an image command with metadata
+                if command == "image" and processed.metadata:
+                    image_metadata.append(processed.metadata)
                 
         if error_found:
             error_text = "\n".join(error_messages)
@@ -160,4 +166,4 @@ class CommandRegistry:
         # Add all processed outputs after original text
         result += "\n".join(processed_outputs)
         
-        return result
+        return result, image_metadata
