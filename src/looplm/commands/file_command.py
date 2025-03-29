@@ -179,11 +179,25 @@ class FileProcessor(CommandProcessor):
         Returns:
             Formatted content string
         """
-        tag_name = f"@file({os.path.basename(path)})"
+        tag_name = f"{os.path.basename(path)}"
         return f"""<{tag_name}>
 {content}
 </{tag_name}>
 """
+    
+    def modify_input_text(self, command_name: str, arg: str, full_match: str) -> str:
+        """Modify the input text for image commands
+        
+        Args:
+            command_name: Name of the command (will be "image")
+            arg: Command argument (the image path/URL)
+            full_match: The complete command text that matched in the input (@image(...))
+            
+        Returns:
+            str: Modified text to replace the command in the input
+        """
+        return arg.strip()
+    
     def get_completions(self, text: str) -> List[Union[str, Tuple[str, str]]]:
         """Get file path completions
         

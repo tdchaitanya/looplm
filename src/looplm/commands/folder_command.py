@@ -55,7 +55,7 @@ class FolderProcessor(CommandProcessor):
             loop = asyncio.get_event_loop()
             summary, tree, content = await loop.run_in_executor(None, ingest, str(path))
            
-            tag_name = f"@folder({os.path.basename(str(path))})"
+            tag_name = f"{os.path.basename(str(path))}"
             result = f"""
 <{tag_name}>
 ```
@@ -109,6 +109,19 @@ class FolderProcessor(CommandProcessor):
             f"  - Relative to base path: {base_path}"
         )
 
+    def modify_input_text(self, command_name: str, arg: str, full_match: str) -> str:
+        """Modify the input text for image commands
+        
+        Args:
+            command_name: Name of the command (will be "image")
+            arg: Command argument (the image path/URL)
+            full_match: The complete command text that matched in the input (@image(...))
+            
+        Returns:
+            str: Modified text to replace the command in the input
+        """
+        return arg.strip()
+    
     def get_completions(self, text: str) -> List[Union[str, Tuple[str, str]]]:
         """Get folder path completions
         

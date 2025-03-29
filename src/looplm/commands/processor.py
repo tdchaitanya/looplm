@@ -57,6 +57,26 @@ class CommandProcessor(ABC):
         """
         pass
 
+    def modify_input_text(self, command_name: str, arg: str, full_match: str) -> str:
+        """Modify the input text for this command
+        
+        This controls how the command is replaced in the input text 
+        before sending to the LLM.
+        
+        Args:
+            command_name: Name of the command (without @)
+            arg: Command argument
+            full_match: The complete command text that matched in the input
+            
+        Returns:
+            str: Modified text to replace the command in the input
+            
+        Note:
+            Default implementation returns the full original match (no modification),
+            but individual commands can override this for custom behavior.
+        """
+        return full_match
+    
     @property
     @abstractmethod
     def name(self) -> str:

@@ -160,11 +160,7 @@ class ImageProcessor(CommandProcessor):
             image_json["format"] = mime_type
             
         # Create formatted content
-        content = f"""<{tag_name}>
-Image URL: {image_url}
-{f'Image format: {mime_type}' if mime_type else ''}
-</{tag_name}>
-"""
+        content = f""""""
         
         # Include metadata in the ProcessingResult
         metadata = {
@@ -176,6 +172,22 @@ Image URL: {image_url}
             content=content,
             metadata=metadata
         )
+
+    def modify_input_text(self, command_name: str, arg: str, full_match: str) -> str:
+        """Modify the input text for image commands
+        
+        Args:
+            command_name: Name of the command (will be "image")
+            arg: Command argument (the image path/URL)
+            full_match: The complete command text that matched in the input (@image(...))
+            
+        Returns:
+            str: Modified text to replace the command in the input
+        """
+        # return the image path/URL
+        # return arg.strip()
+        
+        return ""
 
     def get_completions(self, text: str) -> List[Union[str, Tuple[str, str]]]:
         """Get image path completions

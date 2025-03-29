@@ -51,7 +51,7 @@ class GithubProcessor(CommandProcessor):
             summary, tree, content = await loop.run_in_executor(None, ingest, url)
                         
             # Format output
-            tag_name = f"@github({self._get_repo_name(url)})"
+            tag_name = f"{self._get_repo_name(url)}"
 
             result = f"""
 <{tag_name}>
@@ -68,7 +68,20 @@ class GithubProcessor(CommandProcessor):
                 content="",
                 error=f"Error processing GitHub repository: {str(e)}"
             )
-
+        
+    def modify_input_text(self, command_name: str, arg: str, full_match: str) -> str:
+        """Modify the input text for image commands
+        
+        Args:
+            command_name: Name of the command (will be "image")
+            arg: Command argument (the image path/URL)
+            full_match: The complete command text that matched in the input (@image(...))
+            
+        Returns:
+            str: Modified text to replace the command in the input
+        """
+        return arg.strip()
+    
     def get_completions(self, text: str) -> List[str]:
         """Get GitHub URL completions
         

@@ -70,7 +70,7 @@ class ShellCommandProcessor(CommandProcessor):
             try:
                 stdout, stderr = await asyncio.wait_for(
                     process.communicate(),
-                    timeout=30.0  # 30 second timeout
+                    timeout=300.0  # 5 min timeout
                 )
             except asyncio.TimeoutError:
                 # Try to terminate the process
@@ -112,6 +112,21 @@ class ShellCommandProcessor(CommandProcessor):
                 content="",
                 error=f"Error executing command: {str(e)}"
             )
+    
+    def modify_input_text(self, command_name: str, arg: str, full_match: str) -> str:
+        """Modify the input text for shell commands
+        
+        Args:
+            command_name: Name of the command (will be "shell")
+            arg: Command argument (the shell command text)
+            full_match: The complete command text that matched in the input ($(command))
+            
+        Returns:
+            str: Modified text to replace the command in the input
+        """
+        # By default, keep the original $() syntax unchanged
+        return full_match
+    
 
     def get_completions(self, text: str) -> List[str]:
         """Get command completions

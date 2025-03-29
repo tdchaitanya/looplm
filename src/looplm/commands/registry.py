@@ -78,6 +78,7 @@ class CommandRegistry:
             
         return await processor.process(arg)
 
+
     def get_completions(self, text: str) -> List[str]:
         """Get completions for current input
         
@@ -116,12 +117,14 @@ class CommandRegistry:
         error_messages = []
         error_found = False
         
-        # Start with original text
-        result = text + "\n\n"  # Add spacing after original text
-        
+        modified_text = text
+
         # Process shell commands
-        for match in self.SHELL_PATTERN.finditer(text):
+        shell_matches = list(self.SHELL_PATTERN.finditer(text))
+        for match in shell_matches:
             command = match.group(1)
+            full_match = match.group(0)
+
             if not command.strip():
                 error_messages.append("Empty shell command in $()")
                 error_found = True
@@ -141,15 +144,30 @@ class CommandRegistry:
                 error_messages.append(f"Shell command error: {processed.error}")
             else:
                 processed_outputs.append(processed.content)
+                
+                # Get the full match for shell command
+                full_match = text[match.start():match.end()]
+                replacement = shell_processor.modify_input_text("shell", command, full_match)
+                # Replace with the modified text
+                # start, end = match.span()
+                # modified_text = modified_text[:start] + replacement + modified_text[end:]
 
         # Process @ commands
-        for match in self.COMMAND_PATTERN.finditer(text):
+        at_matches = list(self.COMMAND_PATTERN.finditer(text))
+        for match in at_matches:
             command = match.group(1)
             # Get argument from either group 2 (parentheses) or group 3 (space-separated)
             arg = match.group(2) if match.group(2) is not None else match.group(3)
+                        
+            arg = arg or ""
             
-            processed = await self.process_command(command, arg or '')
-            
+            processor = self.get_processor(command)
+            if not processor:
+                error_messages.append(f"Unknown command: @{command}")
+                error_found = True
+                continue
+            processed = await self.process_command(command, arg)
+
             if processed.error:
                 error_found = True
                 error_messages.append(f"@{command} error: {processed.error}")
@@ -158,12 +176,24 @@ class CommandRegistry:
                 # Check if this is an image command with metadata
                 if command == "image" and processed.metadata:
                     image_metadata.append(processed.metadata)
+
+                # Get the modified input text from the processor
+                # Get the modified input text from the processor
+                full_match = text[match.start():match.end()]
+                replacement = processor.modify_input_text(command, arg, full_match)
+
+                # Replace the entire match with the modified text
+                start, end = match.span()
+                modified_text = modified_text[:start] + replacement + modified_text[end:]
+                
                 
         if error_found:
             error_text = "\n".join(error_messages)
             raise Exception(f"Command processing failed:\n{error_text}")
             
-        # Add all processed outputs after original text
-        result += "\n".join(processed_outputs)
+        # Use the modified text as the base, then add processed outputs at the end
+        result = modified_text
+        if processed_outputs:
+            result += "\n\n" + "\n".join(processed_outputs)
         
         return result, image_metadata
