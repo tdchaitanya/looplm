@@ -3,7 +3,7 @@ import json
 import os
 from base64 import b64encode
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -46,7 +46,19 @@ class ConfigManager:
         config["default_provider"] = provider.value
 
         if model_name:
-            config["providers"][provider.value]["default_model"] = model_name
+            # Update the default model for the provider
+            provider_config = config["providers"][provider.value]
+            
+            # Check if we're using the new multi-model structure
+            if "models" in provider_config:
+                provider_config["default_model"] = model_name
+                
+                # Make sure the model exists in the models list
+                if model_name not in provider_config["models"]:
+                    provider_config["models"].append(model_name)
+            else:
+                # Legacy structure - just update the default model
+                provider_config["default_model"] = model_name
 
         self.save_config(config)
 
@@ -113,6 +125,7 @@ class ConfigManager:
         env_vars: Dict[str, str],
         is_default: bool = False,
         additional_config: Dict = None,
+        is_new_model: bool = False,
     ):
         """Save provider configuration with model
 
@@ -122,33 +135,90 @@ class ConfigManager:
             env_vars: Environment variables for provider
             is_default: Whether this should be the default provider
             additional_config: Additional params (e.g., provider name for OTHER type)
+            is_new_model: If True, this is adding a model to an existing provider
         """
         secrets = self.load_secrets()
-
-        if provider == ProviderType.OTHER:
-            for key, value in env_vars.items():
-                secrets[f"{provider.value}_{key}"] = value
-        else:
-            for key, value in env_vars.items():
-                secrets[f"{provider.value}_{key}"] = value
-
-        self.save_secrets(secrets)
-
         config = self.load_config()
+        
+        # Initialize providers if it doesn't exist
         if "providers" not in config:
             config["providers"] = {}
+            
+        # Check if we're adding to an existing provider
+        provider_exists = provider.value in config.get("providers", {})
+        
+        # Only save env vars if this is a new provider or we're explicitly updating them
+        if not provider_exists or not is_new_model:
+            if provider == ProviderType.OTHER:
+                for key, value in env_vars.items():
+                    secrets[f"{provider.value}_{key}"] = value
+            else:
+                for key, value in env_vars.items():
+                    secrets[f"{provider.value}_{key}"] = value
+            
+            self.save_secrets(secrets)
 
-        config["providers"][provider.value] = {
-            "default_model": model_name,
-            "env_vars": list(env_vars.keys()),
-        }
-        if additional_config:
-            config["providers"][provider.value].update(additional_config)
+        # Create or update the provider configuration
+        if not provider_exists:
+            # New provider
+            config["providers"][provider.value] = {
+                "default_model": model_name,
+                "models": [model_name],  # New: list of models
+                "env_vars": list(env_vars.keys()),
+            }
+            if additional_config:
+                config["providers"][provider.value].update(additional_config)
+        else:
+            # Existing provider
+            provider_config = config["providers"][provider.value]
+            
+            # Update env_vars list if needed
+            if not is_new_model:
+                provider_config["env_vars"] = list(env_vars.keys())
+                
+            # Update or add models
+            if "models" not in provider_config:
+                # Migrate from old format to new format
+                current_model = provider_config.get("default_model")
+                provider_config["models"] = [current_model, model_name] if current_model and current_model != model_name else [model_name]
+            else:
+                # Add new model if it's not already in the list
+                if model_name not in provider_config["models"]:
+                    provider_config["models"].append(model_name)
+            
+            # Update default model if specified
+            if is_new_model:
+                provider_config["default_model"] = model_name
+            
+            # Update additional config if provided
+            if additional_config:
+                provider_config.update(additional_config)
 
+        # Set as default provider if needed
         if is_default or "default_provider" not in config:
             config["default_provider"] = provider.value
 
         self.save_config(config)
+
+    def get_provider_models(self, provider: ProviderType) -> List[str]:
+        """Get all models configured for a provider
+
+        Args:
+            provider: Provider type
+
+        Returns:
+            List of model names
+        """
+        config = self.load_config()
+        provider_config = config.get("providers", {}).get(provider.value, {})
+        
+        # Check if we're using the new multi-model structure
+        if "models" in provider_config:
+            return provider_config["models"]
+        elif "default_model" in provider_config:
+            # Legacy structure - return single model as a list
+            return [provider_config["default_model"]]
+        return []
 
     def get_configured_providers(self) -> Dict[ProviderType, Dict[str, Any]]:
         """Get dictionary of configured providers and their configurations

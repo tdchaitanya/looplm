@@ -115,14 +115,36 @@ class ChatSession:
             self.custom_provider = custom_provider
 
     def _get_provider_and_model(
-        self, provider_name: Optional[str] = None, model_name: Optional[str] = None
-    ) -> tuple[ProviderType, str, Optional[str]]:
+            self, provider_name: Optional[str] = None, model_name: Optional[str] = None
+        ) -> tuple[ProviderType, str, Optional[str]]:
         """Get provider and model configuration"""
         if provider_name:
             try:
                 provider = ProviderType(provider_name)
             except ValueError:
-                raise ValueError(f"Invalid provider: {provider_name}")
+                # Check if this is a custom provider name
+                providers = self.config_manager.get_configured_providers()
+                found = False
+                
+                # First check for custom (OTHER) providers
+                for p_type, p_config in providers.items():
+                    if p_type == ProviderType.OTHER and p_config.get("provider_name") == provider_name:
+                        provider = ProviderType.OTHER
+                        found = True
+                        break
+                
+                if not found:
+                    # If not found in OTHER providers, check if it matches any provider name more flexibly
+                    # This handles cases like 'groq' not being an exact enum match but a configured provider
+                    for provider_type, config in providers.items():
+                        provider_display = self.config_manager.get_provider_display_name(provider_type, config).lower()
+                        if provider_name.lower() == provider_display:
+                            provider = provider_type
+                            found = True
+                            break
+                    
+                    if not found:
+                        raise ValueError(f"Invalid provider: {provider_name}")
 
             provider_config = self._get_provider_config(provider)
             if model_name:
@@ -133,12 +155,21 @@ class ChatSession:
                 )
                 return provider, model_name, actual_name
 
+            default_model = provider_config.get("default_model")
+            if not default_model:
+                # Fallback to first model in the models list if available
+                models = provider_config.get("models", [])
+                if models:
+                    default_model = models[0]
+                else:
+                    raise ValueError(f"No models configured for provider {provider_name}")
+
             actual_name = (
                 provider_config.get("provider_name")
                 if provider == ProviderType.OTHER
                 else None
             )
-            return provider, provider_config["default_model"], actual_name
+            return provider, default_model, actual_name
 
         provider, default_model = self.config_manager.get_default_provider()
         if not provider or not default_model:
@@ -245,8 +276,8 @@ class ChatSession:
         self.updated_at = datetime.now()
 
     def send_message(
-        self, content: str, stream: bool = True, show_tokens: bool = False, debug: bool = False
-    ) -> str:
+            self, content: str, stream: bool = True, show_tokens: bool = False, debug: bool = False
+        ) -> str:
         """
         Send a message and get response.
 
@@ -302,9 +333,26 @@ class ChatSession:
             self.messages.append(user_msg)
 
             # Prepare model name
-            actual_model = self.model
+            # IMPORTANT FIX: Check if the model name already contains the provider prefix
             if self.provider == ProviderType.OTHER and self.custom_provider:
-                actual_model = f"{self.custom_provider}/{self.model}"
+                # For custom providers
+                if not self.model.startswith(f"{self.custom_provider}/"):
+                    actual_model = f"{self.custom_provider}/{self.model}"
+                else:
+                    actual_model = self.model
+            else:
+                # For standard providers
+                provider_prefix = f"{self.provider.value}/"
+                if self.model.startswith(provider_prefix):
+                    # Model already has the provider prefix, use as is
+                    actual_model = self.model
+                else:
+                    # Only add prefix for certain providers that need it
+                    if self.provider in [ProviderType.GEMINI, ProviderType.BEDROCK, ProviderType.AZURE]:
+                        actual_model = f"{self.provider.value}/{self.model}"
+                    else:
+                        # For most providers like OpenAI, Anthropic, Groq, etc. don't add prefix
+                        actual_model = self.model
 
             # Check if the model supports vision 
             try:
@@ -355,7 +403,8 @@ class ChatSession:
         except Exception as e:
             from rich.markup import escape
             error_message = escape(str(e))
-            raise Exception(f"Error sending message: {error_message}")        
+            raise Exception(f"Error sending message: {error_message}")
+        
     def __del__(self):
         """Cleanup when session is destroyed."""
         pass

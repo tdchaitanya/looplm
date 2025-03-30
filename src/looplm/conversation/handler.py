@@ -52,10 +52,35 @@ class ConversationHandler:
         """Get provider and model to use"""
         if provider_name:
             try:
+                # Try to get the provider as an enum
                 provider = ProviderType(provider_name)
             except ValueError:
-                raise ValueError(f"Invalid provider: {provider_name}")
+                # Check if this is a custom provider name
+                providers = self.config_manager.get_configured_providers()
+                found = False
+                for p_type, p_config in providers.items():
+                    if p_type == ProviderType.OTHER and p_config.get("provider_name") == provider_name:
+                        provider = ProviderType.OTHER
+                        found = True
+                        break
+                
+                if not found:
+                    # If not found in OTHER providers, check if it matches any provider name more flexibly
+                    # This handles cases like 'groq' not being an exact enum match but a configured provider
+                    for provider_type, config in providers.items():
+                        provider_display = self.config_manager.get_provider_display_name(provider_type, config).lower()
+                        if provider_name.lower() == provider_display:
+                            provider = provider_type
+                            found = True
+                            break
+                    
+                    if not found:
+                        raise ValueError(f"Invalid provider: {provider_name}")
+            
+            # Now get the provider configuration
             provider_config = self._get_provider_config(provider)
+            
+            # If model is specified, use it
             if model_name:
                 actual_name = (
                     provider_config.get("provider_name")
@@ -63,19 +88,34 @@ class ConversationHandler:
                     else None
                 )
                 return provider, model_name, actual_name
+            
+            # Otherwise use default model
+            default_model = provider_config.get("default_model")
+            if not default_model:
+                # Fallback to first model in the list if default isn't set
+                models = self.config_manager.get_provider_models(provider)
+                if models:
+                    default_model = models[0]
+                else:
+                    raise ValueError(f"No models configured for provider {provider_name}")
+                
             actual_name = (
                 provider_config.get("provider_name")
                 if provider == ProviderType.OTHER
                 else None
             )
-            return provider, provider_config["default_model"], actual_name
+            return provider, default_model, actual_name
 
+        # No provider specified, use default
         provider, default_model = self.config_manager.get_default_provider()
         if not provider or not default_model:
             raise ValueError(
                 "No default provider configured. Run 'looplm --configure' first."
             )
+            
         provider_config = self._get_provider_config(provider)
+        
+        # If model is specified, use it with the default provider
         if model_name:
             actual_name = (
                 provider_config.get("provider_name")
@@ -83,6 +123,8 @@ class ConversationHandler:
                 else None
             )
             return provider, model_name, actual_name
+            
+        # Otherwise use default provider and model
         actual_name = (
             provider_config.get("provider_name")
             if provider == ProviderType.OTHER
@@ -115,8 +157,8 @@ class ConversationHandler:
             live.update(text)
 
     def handle_prompt(
-        self, prompt: str, provider: Optional[str] = None, model: Optional[str] = None
-    ) -> None:
+            self, prompt: str, provider: Optional[str] = None, model: Optional[str] = None
+        ) -> None:
         """
         Handle a user prompt and stream the response.
 
@@ -139,9 +181,26 @@ class ConversationHandler:
             self._setup_environment(provider_type)
 
             # Prepare actual model name
-            actual_model = model_name
+            # IMPORTANT FIX: Check if the model name already contains the provider prefix
             if provider_type == ProviderType.OTHER and custom_provider:
-                actual_model = f"{custom_provider}/{model_name}"
+                # For custom providers
+                if not model_name.startswith(f"{custom_provider}/"):
+                    actual_model = f"{custom_provider}/{model_name}"
+                else:
+                    actual_model = model_name
+            else:
+                # For standard providers
+                provider_prefix = f"{provider_type.value}/"
+                if model_name.startswith(provider_prefix):
+                    # Model already has the provider prefix, use as is
+                    actual_model = model_name
+                else:
+                    # Only add prefix for certain providers that need it
+                    if provider_type in [ProviderType.GEMINI, ProviderType.BEDROCK, ProviderType.AZURE]:
+                        actual_model = f"{provider_type.value}/{model_name}"
+                    else:
+                        # For most providers like OpenAI, Anthropic, Groq, etc. don't add prefix
+                        actual_model = model_name
             
             # Check if the model supports vision
             try:

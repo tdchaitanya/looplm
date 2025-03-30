@@ -225,29 +225,130 @@ class CommandHandler:
         # Display available providers
         providers = self.config_manager.get_configured_providers()
         self.console.display_info("\nConfigured providers:")
+        
         for provider, config in providers.items():
             provider_name = self.config_manager.get_provider_display_name(
                 provider, config
             )
-            self.console.display_info(f"  • {provider_name}: {config['default_model']}")
+            models = config.get("models", [config.get("default_model")])
+            default_model = config.get("default_model")
+            
+            self.console.display_info(f"  • {provider_name}:")
+            for model in models:
+                is_default = model == default_model
+                self.console.display_info(f"      - {model}" + (" (default)" if is_default else ""))
 
         # Get provider selection
         provider_input = Prompt.ask(
             "\nEnter provider name (or press Enter to keep current)"
         )
+        
         if provider_input:
-            model_input = Prompt.ask("Enter model name")
-            session.set_model(model_input, provider_input)
-            self.console.display_success(
-                f"Switched to {provider_input} with model {model_input}"
-            )
+            # If provider selected, show its models
+            try:
+                # Try to find the provider
+                selected_provider = None
+                
+                # Try to get provider as ProviderType directly
+                try:
+                    selected_provider = ProviderType(provider_input)
+                    if selected_provider not in providers:
+                        selected_provider = None
+                except ValueError:
+                    # Not a direct enum match
+                    pass
+                
+                # Check if it's a custom provider
+                if selected_provider is None:
+                    for p, config in providers.items():
+                        if p == ProviderType.OTHER and config.get("provider_name") == provider_input:
+                            selected_provider = p
+                            break
+                
+                # Check if it matches any provider display name
+                if selected_provider is None:
+                    for p, config in providers.items():
+                        display_name = self.config_manager.get_provider_display_name(p, config).lower()
+                        if provider_input.lower() == display_name:
+                            selected_provider = p
+                            break
+                
+                if selected_provider is None:
+                    self.console.display_error(f"Provider {provider_input} not found")
+                    return True
+                
+                # Get models for selected provider
+                provider_config = providers[selected_provider]
+                models = provider_config.get("models", [provider_config.get("default_model")])
+                
+                if models:
+                    self.console.display_info(f"\nAvailable models for {provider_input}:")
+                    for i, model in enumerate(models, 1):
+                        self.console.display_info(f"  {i}. {model}")
+                    
+                    model_choice = Prompt.ask(
+                        "Enter model number or name",
+                        default="1"
+                    )
+                    
+                    # Convert choice to model name if it's a number
+                    model_input = None
+                    try:
+                        choice_idx = int(model_choice) - 1
+                        if 0 <= choice_idx < len(models):
+                            model_input = models[choice_idx]
+                        else:
+                            model_input = model_choice
+                    except ValueError:
+                        model_input = model_choice
+                else:
+                    model_input = Prompt.ask("Enter model name")
+                
+                # Use the display name for better UX
+                display_name = self.config_manager.get_provider_display_name(
+                    selected_provider, provider_config
+                )
+                session.set_model(model_input, selected_provider.value)
+                self.console.display_success(
+                    f"Switched to {display_name} with model {model_input}"
+                )
+            except Exception as e:
+                self.console.display_error(f"Error selecting provider: {str(e)}")
+                return True
         else:
-            model_input = Prompt.ask("Enter model name")
+            # Just changing the model for current provider
+            current_provider = session.provider
+            provider_config = providers.get(current_provider, {})
+            models = provider_config.get("models", [provider_config.get("default_model")])
+            
+            if models:
+                self.console.display_info("\nAvailable models for current provider:")
+                for i, model in enumerate(models, 1):
+                    self.console.display_info(f"  {i}. {model}")
+                
+                model_choice = Prompt.ask(
+                    "Enter model number or name",
+                    default="1"
+                )
+                
+                # Convert choice to model name if it's a number
+                model_input = None
+                try:
+                    choice_idx = int(model_choice) - 1
+                    if 0 <= choice_idx < len(models):
+                        model_input = models[choice_idx]
+                    else:
+                        model_input = model_choice
+                except ValueError:
+                    model_input = model_choice
+            else:
+                model_input = Prompt.ask("Enter model name")
+            
             session.set_model(model_input)
             self.console.display_success(f"Switched to model: {model_input}")
 
         return True
-
+    
     def _handle_system(self) -> bool:
         """Handle system command"""
         if not self.session_manager.active_session:

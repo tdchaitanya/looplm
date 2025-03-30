@@ -122,45 +122,85 @@ def cli(prompt, provider, model, configure, reset, reset_provider, set_default, 
         return
 
     if set_default:
-        try:
-            provider_type = ProviderType(set_default)
-            providers = config_manager.get_configured_providers()
-
-            if set_default not in [p.value for p in ProviderType]:
-                other_config = providers.get(ProviderType.OTHER, {})
-                if other_config and other_config.get("provider_name") == set_default:
-                    provider_type = ProviderType.OTHER
-                else:
+            try:
+                providers = config_manager.get_configured_providers()
+                provider_found = False
+                provider_type = None
+                
+                # First try direct enum match
+                try:
+                    provider_type = ProviderType(set_default)
+                    provider_found = True
+                except ValueError:
+                    # Not a direct enum match, check other possibilities
+                    pass
+                
+                # Check if it's a custom (OTHER) provider
+                if not provider_found:
+                    other_config = providers.get(ProviderType.OTHER, {})
+                    if other_config and other_config.get("provider_name") == set_default:
+                        provider_type = ProviderType.OTHER
+                        provider_found = True
+                
+                # Check if it matches any provider display name
+                if not provider_found:
+                    for p_type, config in providers.items():
+                        display_name = config_manager.get_provider_display_name(p_type, config).lower()
+                        if set_default.lower() == display_name:
+                            provider_type = p_type
+                            provider_found = True
+                            break
+                
+                if not provider_found:
                     console.print(
-                        f"Provider {set_default} is not configured", style="bold red"
+                        f"Provider '{set_default}' is not configured", style="bold red"
                     )
                     return
 
-            if provider_type not in providers:
+                if provider_type not in providers:
+                    console.print(
+                        f"Provider '{set_default}' is not configured", style="bold red"
+                    )
+                    return
+
+                # Get available models for this provider
+                models = config_manager.get_provider_models(provider_type)
+                
+                if models:
+                    console.print("\nAvailable models for this provider:")
+                    for i, model_name in enumerate(models, 1):
+                        console.print(f"  {i}. {model_name}")
+                    
+                    model_choice = click.prompt(
+                        "Select model number or enter model name",
+                        default="1"
+                    )
+                    
+                    # Convert choice to model name if it's a number
+                    try:
+                        choice_idx = int(model_choice) - 1
+                        if 0 <= choice_idx < len(models):
+                            model_name = models[choice_idx]
+                        else:
+                            model_name = model_choice
+                    except ValueError:
+                        model_name = model_choice
+                else:
+                    # Let user select a new default model
+                    model_name = click.prompt(
+                        "Enter the default model name for this provider",
+                        default=providers[provider_type]["default_model"],
+                    )
+
+                config_manager.set_default_provider(provider_type, model_name)
+                display_name = config_manager.get_provider_display_name(provider_type, providers[provider_type])
                 console.print(
-                    f"Provider {set_default} is not configured", style="bold red"
+                    f"✨ Default provider set to {display_name} with model {model_name}",
+                    style="bold green",
                 )
-                return
-
-            # Let user select a new default model
-            model_name = click.prompt(
-                "Enter the default model name for this provider",
-                default=providers[provider_type]["default_model"],
-            )
-
-            config_manager.set_default_provider(provider_type, model_name)
-            display_name = (
-                providers[provider_type].get("provider_name", "")
-                if provider_type == ProviderType.OTHER
-                else set_default
-            )
-            console.print(
-                f"✨ Default provider set to {display_name} with model {model_name}",
-                style="bold green",
-            )
-        except ValueError:
-            console.print(f"Invalid provider: {set_default}", style="bold red")
-        return
+            except Exception as e:
+                console.print(f"Error setting default provider: {str(e)}", style="bold red")
+            return
 
     if status:
         show_status()
@@ -205,13 +245,37 @@ def show_status():
 
     table = Table(title="Configured Providers")
     table.add_column("Provider", style="cyan")
-    table.add_column("Default Model", style="green")
+    table.add_column("Models", style="green")
+    table.add_column("Default Model", style="yellow")
     table.add_column("Status", style="yellow")
 
     for provider, config in providers.items():
         display_name = config_manager.get_provider_display_name(provider, config)
+        
+        # Get all models for this provider
+        models = config_manager.get_provider_models(provider)
+        
+        # Strip provider prefix from model names for display
+        display_models = []
+        provider_prefix = f"{provider.value}/"
+        for model in models:
+            if model.startswith(provider_prefix):
+                display_models.append(model[len(provider_prefix):])
+            else:
+                display_models.append(model)
+        
+        models_str = ", ".join(display_models)
+        
+        # Also strip prefix from default model
+        default_model = config.get("default_model", "")
+        if default_model.startswith(provider_prefix):
+            default_model_display = default_model[len(provider_prefix):]
+        else:
+            default_model_display = default_model
+        
         status = "DEFAULT" if provider == default_provider else "Configured"
-        table.add_row(display_name, config["default_model"], status)
+        
+        table.add_row(display_name, models_str, default_model_display, status)
 
     # Get available commands
     from looplm.commands import CommandManager
@@ -226,12 +290,13 @@ def show_status():
     command_table.add_column("Command", style="cyan")
     command_table.add_column("Description", style="white")
     
+    # Add standard @ commands first
     for cmd_name in sorted(available_commands):
         processor = command_manager.get_processor(cmd_name)
-        if processor:
-            command_table.add_column(f"@{cmd_name}(arg)", processor.description)
+        if processor and cmd_name != "shell":  # Skip shell as we'll display it differently
+            command_table.add_row(f"@{cmd_name}(arg)", processor.description)
     
-    # Add shell command
+    # Add shell command using $() syntax
     shell_processor = command_manager.get_processor("shell")
     if shell_processor:
         command_table.add_row("$(command)", shell_processor.description)
@@ -243,10 +308,10 @@ def show_status():
         '  looplm "your prompt"                        - Use default provider and model'
     )
     console.print(
-        '  looplm --provider <name> "prompt"          - Use specific provider with its default model'
+        '  looplm --provider <n> "prompt"          - Use specific provider with its default model'
     )
     console.print(
-        '  looplm --provider <name> --model <name> "prompt" - Use specific provider and model'
+        '  looplm --provider <n> --model <n> "prompt" - Use specific provider and model'
     )
     console.print('\nNote: For custom providers configured as "other", use either:')
     console.print('  looplm --provider other "prompt"           - Using internal name')
@@ -257,17 +322,9 @@ def show_status():
     console.print("\nConfiguration:", style="bold")
     console.print("  looplm --configure             - Configure providers")
     console.print("  looplm --reset                - Reset all configuration")
-    console.print("  looplm --reset-provider <name> - Reset specific provider")
-    console.print("  looplm --set-default <name>   - Set default provider and model")
+    console.print("  looplm --reset-provider <n> - Reset specific provider")
+    console.print("  looplm --set-default <n>   - Set default provider and model")
     console.print("  looplm --status               - Show current status")
-
-def main():
-    """Main entry point for the CLI"""
-    try:
-        cli()
-    except KeyboardInterrupt:
-        console.print("\n\nOperation cancelled by user", style="yellow")
-        sys.exit(1)
 
 
 if __name__ == "__main__":

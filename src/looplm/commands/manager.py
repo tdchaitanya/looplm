@@ -1,5 +1,4 @@
 # src/looplm/commands/manager.py
-
 import asyncio
 from pathlib import Path
 from typing import Dict, List, Optional, Type, Tuple
@@ -47,11 +46,12 @@ class CommandManager:
         from .image_command import ImageProcessor  
         
         # Register default processors
-        # Note: ShellCommandProcessor is already registered by the registry
         self.registry.register(FileProcessor)
         self.registry.register(FolderProcessor)
         self.registry.register(GithubProcessor)
-        self.registry.register(ImageProcessor) 
+        self.registry.register(ImageProcessor)
+        # Note: ShellCommandProcessor is not explicitly registered as an @ command
+        # but is used internally by the registry for handling $() commands
     
     def register_command(self, processor_class: Type[CommandProcessor]):
         """Register a custom command processor
@@ -78,7 +78,10 @@ class CommandManager:
         Returns:
             List of registered command names
         """
-        return list(self.registry._processors.keys())
+        # Include shell in available commands explicitly
+        commands = list(self.registry._processors.keys())
+        commands.append("shell")  # Add shell to available commands
+        return commands
     
     async def process_text(self, text: str) -> Tuple[str, List[Dict]]:
         """Process text with all registered commands

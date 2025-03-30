@@ -21,8 +21,9 @@ class CommandRegistry:
         """
         self.base_path = base_path or Path.cwd()
         self._processors: Dict[str, CommandProcessor] = {}
-        shell_processor = ShellCommandProcessor(self.base_path)
-        self._processors[shell_processor.name] = shell_processor
+        # Create shell processor but don't register it as an @ command
+        # We'll still use it for processing $() commands
+        self.shell_processor = ShellCommandProcessor(self.base_path)
         
     def register(self, processor_class: Type[CommandProcessor]) -> None:
         """Register a command processor
@@ -31,7 +32,9 @@ class CommandRegistry:
             processor_class: CommandProcessor class to register
         """
         processor = processor_class(self.base_path)
-        self._processors[processor.name] = processor
+        # Skip registering the shell processor as @shell
+        if processor.name != "shell":
+            self._processors[processor.name] = processor
 
     def get_processor(self, name: str) -> Optional[CommandProcessor]:
         """Get processor by command name
@@ -42,6 +45,8 @@ class CommandRegistry:
         Returns:
             CommandProcessor if registered, None otherwise
         """
+        if name == "shell":
+            return self.shell_processor
         return self._processors.get(name)
 
     async def process_command(self, command: str, arg: str) -> ProcessingResult:
@@ -130,14 +135,8 @@ class CommandRegistry:
                 error_found = True
                 continue
                 
-            # Get the shell processor from the registry
-            shell_processor = self.get_processor("shell")
-            if not shell_processor:
-                error_messages.append("Shell processor not found")
-                error_found = True
-                continue
-                
-            processed = await shell_processor.process(command)
+            # Process shell command using the shell processor
+            processed = await self.shell_processor.process(command)
             
             if processed.error:
                 error_found = True
@@ -147,7 +146,7 @@ class CommandRegistry:
                 
                 # Get the full match for shell command
                 full_match = text[match.start():match.end()]
-                replacement = shell_processor.modify_input_text("shell", command, full_match)
+                replacement = self.shell_processor.modify_input_text("shell", command, full_match)
                 # Replace with the modified text
                 # start, end = match.span()
                 # modified_text = modified_text[:start] + replacement + modified_text[end:]

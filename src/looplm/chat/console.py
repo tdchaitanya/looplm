@@ -51,13 +51,21 @@ class ChatConsole:
         # Provider info table
         provider_table = Table(title="Configured Providers")
         provider_table.add_column("Provider", style="cyan")
-        provider_table.add_column("Default Model", style="green")
+        provider_table.add_column("Models", style="green")
+        provider_table.add_column("Default Model", style="yellow")
         provider_table.add_column("Status", style="yellow")
 
         for provider, config in providers.items():
             display_name = config_manager.get_provider_display_name(provider, config)
+            
+            # Get all models for this provider
+            models = config_manager.get_provider_models(provider)
+            models_str = ", ".join(models)
+            
+            default_model = config.get("default_model", "")
             status = "DEFAULT" if provider == default_provider else "Configured"
-            provider_table.add_row(display_name, config["default_model"], status)
+            
+            provider_table.add_row(display_name, models_str, default_model, status)
 
         # Get available commands from the CommandManager
         from looplm.commands import CommandManager
@@ -100,12 +108,14 @@ class ChatConsole:
         for cmd_name in available_commands:
             processor = command_manager.get_processor(cmd_name)
             if processor:
-                if cmd_name == "shell":
-                    # Special handling for shell command
-                    commands_table.add_row("$(command)", processor.description)
-                else:
+                if cmd_name != "shell":
                     # Standard @ commands
                     commands_table.add_row(f"@{cmd_name}(path)", processor.description)
+        
+        # Add shell command with $() syntax
+        shell_processor = command_manager.get_processor("shell")
+        if shell_processor:
+            commands_table.add_row("$(command)", shell_processor.description)
 
         # Keyboard shortcuts
         commands_table.add_row("Keyboard Shortcuts", "", style="bold magenta")
