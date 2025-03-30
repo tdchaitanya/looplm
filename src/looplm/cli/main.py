@@ -326,6 +326,13 @@ def show_status():
     console.print("  looplm --set-default <n>   - Set default provider and model")
     console.print("  looplm --status               - Show current status")
 
-
+def main():
+    """Main entry point for the CLI"""
+    try:
+        cli()
+    except KeyboardInterrupt:
+        console.print("\n\nOperation cancelled by user", style="yellow")
+        sys.exit(1)
+        
 if __name__ == "__main__":
     main()
