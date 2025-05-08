@@ -1137,6 +1137,7 @@ description = "The standard Python readline extension statically linked against 
 optional = false
 python-versions = "*"
 groups = ["main"]
+markers = "sys_platform != \"win32\""
 files = [
     {file = "gnureadline-8.2.13-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:0ca03501ce0939d7ecf9d075860d6f6ceb2f49f30331b4e96e4678ce03687bab"},
     {file = "gnureadline-8.2.13-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:c28e33bfc56d4204693f213abeab927f65c505ce91f668a039720bc7c46b0353"},
@@ -4242,4 +4243,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "f0024d35e5f82b5deee70b313bb9cf549f3268095de028711d1b7f02441592a3"
+content-hash = "1090c80547d85aa7277b9b563f8f50d9a23c21fd8f36a80a0d0b2c5f77c86d01"

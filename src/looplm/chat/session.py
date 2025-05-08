@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from uuid import uuid4
 from pathlib import Path
 
-import gnureadline
+from ..utils.readline_compatibility import readline
 from litellm import completion
 from rich.console import Console
 from rich.live import Live

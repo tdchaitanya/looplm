@@ -12,7 +12,6 @@ click = "^8.1.8"
 rich = "^13.9.4"
 boto3 = "^1.37.21"
 prompt-toolkit = "^3.0.50"
-gnureadline = "^8.2.13"
 markitdown = "^0.1.1"
 requests = "^2.32.3"
 google-genai = "^1.8.0"
@@ -22,6 +21,8 @@ gitingest = "^0.1.4"
 pyperclip = "^1.9.0"
 litellm = "^1.64.1"
 cryptography = "^44.0.2"
+gnureadline = { version = ">=8.2.13,<9.0.0", markers = "sys_platform != 'win32'" }
+pyreadline3 = { version = ">=3.4.1,<4.0.0", markers = "sys_platform == 'win32'" }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
