@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "looplm"
-version = "0.4.3"
+version = "0.4.4"
 description = "Loop-LM: Tool to access LLMs from the command line"
 authors = ["Chaitanya Devaguptapu <tdchaitanya@gmail.com>"]
 readme = "README.md"
