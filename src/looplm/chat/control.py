@@ -50,6 +50,10 @@ class CommandHandler:
             return self._handle_help()
         elif cmd in ["clear", "c"]:
             return self._handle_clear()
+        elif cmd.startswith("clear-last"):
+            parts = cmd.split(" ", 1)
+            count_param = parts[1] if len(parts) > 1 else "1"
+            return self._handle_clear_last(count_param)
 
         # Session management
         elif cmd == "save":
@@ -75,6 +79,49 @@ class CommandHandler:
         else:
             self.console.display_error(f"Unknown command: {cmd}")
             return True
+
+    def _handle_clear_last(self, count: str = "1") -> bool:
+        """Handle clear-last command"""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        try:
+            num_to_clear = int(count) if count.isdigit() else 1
+        except ValueError:
+            self.console.display_error("Invalid number format")
+            return True
+
+        session = self.session_manager.active_session
+
+        # Check if there are messages to clear
+        non_system_count = len(
+            [msg for msg in session.messages if msg.role != "system"]
+        )
+        if non_system_count == 0:
+            self.console.display_error("No messages to clear")
+            return True
+
+        # Confirm action
+        actual_count = min(num_to_clear, non_system_count)
+        if actual_count == 1:
+            if not self.console.confirm_action("Clear the last message?"):
+                return True
+        else:
+            if not self.console.confirm_action(
+                f"Clear the last {actual_count} messages?"
+            ):
+                return True
+
+        # Clear messages - preserve cost by default
+        cleared_count = session.clear_last_messages(actual_count, preserve_cost=True)
+
+        if cleared_count == 1:
+            self.console.display_success("Last message cleared")
+        else:
+            self.console.display_success(f"Last {cleared_count} messages cleared")
+
+        return True
 
     def _handle_quit(self) -> bool:
         """Handle quit command"""

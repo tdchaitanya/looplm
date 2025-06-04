@@ -18,7 +18,7 @@ from ..config.providers import ProviderType
 class ConversationHandler:
     """Handles conversation interactions with LLM providers"""
 
-    def __init__(self, console: Optional[Console] = None):
+    def __init__(self, console: Optional[Console] = None, debug: bool = False):
         """Initialize conversation handler"""
         if console is None:
             self.console = Console(
@@ -30,6 +30,7 @@ class ConversationHandler:
         self.config_manager = ConfigManager()
         # Use command manager instead of file preprocessor
         self.command_manager = CommandManager(base_path=Path.cwd())
+        self.debug = debug
 
     def _get_provider_config(self, provider: ProviderType) -> dict:
         """Get full provider configuration including custom name if it's OTHER type"""
@@ -182,6 +183,16 @@ class ConversationHandler:
             processed_content, image_metadata = self.command_manager.process_text_sync(
                 prompt
             )
+
+            if self.debug:
+                # In debug mode, just display the processed content
+                self.console.print("\nProcessed Content:", style="bold blue")
+                self.console.print(processed_content)
+                if image_metadata:
+                    self.console.print("\nImage Metadata:", style="bold magenta")
+                    for img in image_metadata:
+                        self.console.print(img)
+                return  # Exit early in debug mode
 
             provider_type, model_name, custom_provider = self._get_provider_and_model(
                 provider, model

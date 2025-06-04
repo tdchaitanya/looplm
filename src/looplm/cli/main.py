@@ -243,7 +243,7 @@ def cli(
                 if other_config and other_config.get("provider_name") == provider:
                     provider = "other"  # Use the internal provider type
 
-            handler = ConversationHandler(console)
+            handler = ConversationHandler(console, debug=debug)
             handler.handle_prompt(prompt_text, provider=provider, model=model)
         except Exception as e:
             from rich.markup import escape
@@ -335,6 +335,9 @@ def show_status():
     )
     console.print(
         '  looplm --provider <n> --model <n> "prompt" - Use specific provider and model'
+    )
+    console.print(
+        '  looplm --debug "prompt"                   - Debug mode: show processed commands without sending to LLM'
     )
     console.print('\nNote: For custom providers configured as "other", use either:')
     console.print('  looplm --provider other "prompt"           - Using internal name')

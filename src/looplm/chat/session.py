@@ -218,6 +218,45 @@ class ChatSession:
             raise ValueError(f"Provider {provider.value} is not configured")
         return providers[provider]
 
+    def clear_last_messages(self, count: int = 1, preserve_cost: bool = True):
+        """Clear the last N messages (excluding system messages)
+
+        Args:
+            count: Number of messages to clear from the end
+            preserve_cost: Whether to preserve the total cost (True) or recalculate (False)
+
+        Returns:
+            int: Number of messages actually cleared
+        """
+        # Get non-system messages
+        non_system_messages = [msg for msg in self.messages if msg.role != "system"]
+
+        if count > len(non_system_messages):
+            count = len(non_system_messages)
+
+        if count <= 0:
+            return 0
+
+        # Rebuild message list
+        system_messages = [msg for msg in self.messages if msg.role == "system"]
+        remaining_messages = non_system_messages[:-count]
+
+        self.messages = system_messages + remaining_messages
+        self.updated_at = datetime.now()
+
+        if not preserve_cost:
+            # Recalculate usage from remaining messages
+            new_usage = TokenUsage()
+            for msg in remaining_messages:
+                if msg.token_usage:
+                    new_usage.input_tokens += msg.token_usage.input_tokens
+                    new_usage.output_tokens += msg.token_usage.output_tokens
+                    new_usage.total_tokens += msg.token_usage.total_tokens
+                    new_usage.cost += msg.token_usage.cost
+            self.total_usage = new_usage
+
+        return count
+
     def set_system_prompt(self, prompt: str):
         """Set or update system prompt"""
         # Remove existing system messages

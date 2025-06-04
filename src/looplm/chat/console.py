@@ -94,6 +94,7 @@ class ChatConsole:
         commands_table.add_row("/delete", "Delete a session")
         commands_table.add_row("/rename", "Rename current session")
         commands_table.add_row("/clear, /c", "Clear chat history")
+        commands_table.add_row("/clear-last [N]", "Clear last N messages (default: 1)")
         commands_table.add_row("/quit, /q", "Exit chat session")
         commands_table.add_row("/help, /h", "Show this help message")
 
