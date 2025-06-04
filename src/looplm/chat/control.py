@@ -80,6 +80,14 @@ class CommandHandler:
         """Handle quit command"""
         try:
             if self.session_manager.active_session:
+                session = self.session_manager.active_session
+                if session.total_usage.total_tokens > 0:
+                    self.console.display_token_usage(
+                        f"Session Summary - {session.name}",
+                        session.total_usage.to_dict(),
+                        show_automatically=True,
+                    )
+
                 if self.console.confirm_action("Save session before quitting?"):
                     self._handle_save()
 

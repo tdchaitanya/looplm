@@ -62,8 +62,8 @@ class TestConfigManagerAdditional:
         secrets = config_manager.load_secrets()
         assert secrets == {}
 
-    def test_prepare_environment_other(self, config_manager, monkeypatch):
-        """Test _prepare_environment for OTHER provider type."""
+    def testload_environment_other(self, config_manager, monkeypatch):
+        """Test load_environment for OTHER provider type."""
         # Mock load_secrets
         test_secrets = {
             "other_TEST_VAR": "test_value",
@@ -77,7 +77,7 @@ class TestConfigManagerAdditional:
                 del os.environ[var]
 
         # Prepare environment for OTHER provider
-        config_manager._prepare_environment("other")
+        config_manager.load_environment("other")
 
         # Verify env vars were set
         assert os.environ.get("TEST_VAR") == "test_value"
@@ -164,7 +164,7 @@ class TestConfigManagerAdditional:
 
             # Test without env_vars
             mock_completion.reset_mock()
-            monkeypatch.setattr(config_manager, "_prepare_environment", lambda x: None)
+            monkeypatch.setattr(config_manager, "load_environment", lambda x: None)
             result = config_manager.validate_provider_setup(
                 "anthropic", "claude-3-opus"
             )
@@ -189,9 +189,9 @@ class TestConfigManagerAdditional:
             )
             assert result is False
 
-        # Test with general error in _prepare_environment
+        # Test with general error in load_environment
         with patch.object(
-            config_manager, "_prepare_environment", side_effect=Exception("Test error")
+            config_manager, "load_environment", side_effect=Exception("Test error")
         ):
             result = config_manager.validate_provider_setup(
                 "anthropic", "claude-3-opus"

@@ -13,7 +13,7 @@ from rich.table import Table
 
 from ..config.manager import ConfigManager
 from .prompt_manager import PromptManager
-from .session import ChatSession
+from .session import ChatSession, TokenUsage
 
 
 class ChatConsole:
@@ -141,22 +141,34 @@ class ChatConsole:
         table.add_column("Name", style="green")
         table.add_column("Messages", justify="right")
         table.add_column("Total Tokens", justify="right")
+        table.add_column("Cost", justify="right")
         table.add_column("Last Updated", style="blue")
-
+        temp_usage = TokenUsage()
         for session in sessions:
             updated_at = datetime.fromisoformat(session["updated_at"])
+            cost = session.get("cost", 0.0)
             table.add_row(
                 session["id"][:8],  # Show shortened ID
                 session["name"],
                 str(session["message_count"]),
-                f"{session['total_tokens']:,}",
+                temp_usage.format_number(session["total_tokens"]),
+                f"${cost:.6f}" if cost > 0 else "$0.000000",
                 updated_at.strftime("%Y-%m-%d %H:%M"),
             )
 
         self.console.print(table)
 
-    def display_token_usage(self, title: str, usage: Dict):
+    def display_token_usage(
+        self, title: str, usage: Dict, show_automatically: bool = False
+    ):
         """Display token usage statistics"""
+
+        token_usage = TokenUsage(
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+            total_tokens=usage.get("total_tokens", 0),
+            cost=usage.get("cost", 0.0),
+        )
         table = Table(title=title)
         table.add_column("Type", style="cyan")
         table.add_column("Count", justify="right")
@@ -164,8 +176,12 @@ class ChatConsole:
         table.add_row("Input Tokens", f"{usage['input_tokens']:,}")
         table.add_row("Output Tokens", f"{usage['output_tokens']:,}")
         table.add_row("Total Tokens", f"{usage['total_tokens']:,}")
+        table.add_row("Cost", f"${usage['cost']:.6f}")
 
         self.console.print(table)
+
+        if show_automatically:
+            self.console.print("\n[dim]Session usage summary[/dim]")
 
     def display_provider_info(self, provider_name: str, model_name: str):
         """Display current provider and model information"""

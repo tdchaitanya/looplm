@@ -113,7 +113,7 @@ class TestConfigManager:
         assert provider == ProviderType.ANTHROPIC
         assert model == "claude-3-opus-20240229"
 
-    def test_prepare_environment(self, config_manager, monkeypatch):
+    def test_load_environment(self, config_manager, monkeypatch):
         """Test preparing environment variables."""
         # Mock load_secrets
         test_secrets = {
@@ -127,7 +127,7 @@ class TestConfigManager:
             del os.environ["API_KEY"]
 
         # Prepare environment for anthropic
-        config_manager._prepare_environment("anthropic")
+        config_manager.load_environment("anthropic")
 
         # Verify env var was set
         assert os.environ.get("API_KEY") == "test_anthropic_key"

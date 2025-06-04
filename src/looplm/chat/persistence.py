@@ -116,6 +116,7 @@ class SessionManager:
                 "updated_at": session.updated_at.isoformat(),
                 "message_count": len(session.messages),
                 "total_tokens": session.total_usage.total_tokens,
+                "cost": session.total_usage.cost,
             }
 
             # Remove existing entry if present

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from uuid import uuid4
 
-from litellm import completion
+from litellm import completion, completion_cost
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
@@ -25,6 +25,7 @@ class TokenUsage:
     input_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
+    cost: float = 0.0
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for serialization"""
@@ -32,6 +33,7 @@ class TokenUsage:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "total_tokens": self.total_tokens,
+            "cost": self.cost,
         }
 
     @classmethod
@@ -41,7 +43,17 @@ class TokenUsage:
             input_tokens=data.get("input_tokens", 0),
             output_tokens=data.get("output_tokens", 0),
             total_tokens=data.get("total_tokens", 0),
+            cost=data.get("cost", 0.0),
         )
+
+    def format_number(self, value: int) -> str:
+        """Format numbers with K/M suffixes"""
+        if value >= 1_000_000:
+            return f"{value / 1_000_000:.1f}M"
+        elif value >= 1_000:
+            return f"{value / 1_000:.1f}K"
+        else:
+            return f"{value:,}"
 
 
 @dataclass
@@ -256,6 +268,7 @@ class ChatSession:
         self.total_usage.input_tokens += usage.input_tokens
         self.total_usage.output_tokens += usage.output_tokens
         self.total_usage.total_tokens += usage.total_tokens
+        self.total_usage.cost += usage.cost
         self.updated_at = datetime.now()
 
     def _stream_markdown(self, content: str, live: Live) -> None:
@@ -337,7 +350,7 @@ class ChatSession:
                 return processed_content
 
             # Only proceed with the LLM if command processing succeeded
-            self.config_manager._prepare_environment(self.provider.value)
+            self.config_manager.load_environment(self.provider.value)
 
             # Add user message
             user_msg = Message("user", processed_content)
@@ -443,18 +456,33 @@ class ChatSession:
                 stream_options={"include_usage": True},
             )
 
+            final_chunk = None
+            cost = 0.0
+
             for chunk in response:
                 content = chunk.choices[0].delta.content or ""
                 accumulated_text += content
                 self._stream_markdown(accumulated_text, live)
 
+                if hasattr(chunk, "usage") and chunk.usage is not None:
+                    final_chunk = chunk
+
+            # Extract cost from the final chunk with usage information
+            if final_chunk and hasattr(final_chunk, "usage") and final_chunk.usage:
+                try:
+                    cost = completion_cost(final_chunk)
+                except Exception:
+                    cost = 0.0
+
             self.latest_response = accumulated_text
 
             # Add response to history with token usage
             token_usage = TokenUsage(
-                input_tokens=chunk.usage.prompt_tokens,
-                output_tokens=chunk.usage.completion_tokens,
-                total_tokens=chunk.usage.prompt_tokens + chunk.usage.completion_tokens,
+                input_tokens=final_chunk.usage.prompt_tokens,
+                output_tokens=final_chunk.usage.completion_tokens,
+                total_tokens=final_chunk.usage.prompt_tokens
+                + final_chunk.usage.completion_tokens,
+                cost=cost,
             )
 
             self.messages.append(
@@ -472,7 +500,8 @@ class ChatSession:
                 self.console.print(
                     f"\n[dim]Token usage - Input: {token_usage.input_tokens}, "
                     f"Output: {token_usage.output_tokens}, "
-                    f"Total: {token_usage.total_tokens}[/dim]"
+                    f"Total: {token_usage.total_tokens}, "
+                    f"Cost: ${token_usage.cost:.6f}[/dim]"
                 )
             return accumulated_text
 
@@ -485,6 +514,11 @@ class ChatSession:
             messages=messages,
         )
 
+        try:
+            cost = completion_cost(response)
+        except Exception:
+            cost = 0.0
+
         content = response.choices[0].message.content
         self.latest_response = content
 
@@ -493,6 +527,7 @@ class ChatSession:
             output_tokens=response.usage.completion_tokens,
             total_tokens=response.usage.prompt_tokens
             + response.usage.completion_tokens,
+            cost=cost,
         )
 
         self.messages.append(
@@ -513,7 +548,8 @@ class ChatSession:
             self.console.print(
                 f"\n[dim]Token usage - Input: {token_usage.input_tokens}, "
                 f"Output: {token_usage.output_tokens}, "
-                f"Total: {token_usage.total_tokens}[/dim]"
+                f"Total: {token_usage.total_tokens}, ",
+                f"Cost: ${token_usage.cost:.6f}[/dim]",
             )
         return content
 

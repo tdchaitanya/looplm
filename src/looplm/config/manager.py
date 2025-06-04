@@ -94,7 +94,7 @@ class ConfigManager:
         except Exception:
             return {}
 
-    def _prepare_environment(self, provider: str) -> None:
+    def load_environment(self, provider: str) -> None:
         """Set up environment variables for the specified provider
 
         Args:
@@ -314,7 +314,7 @@ class ConfigManager:
                 for key, value in env_vars.items():
                     os.environ[key] = value
             else:
-                self._prepare_environment(provider)
+                self.load_environment(provider)
 
             try:
                 from litellm import completion
