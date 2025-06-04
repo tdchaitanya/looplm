@@ -132,33 +132,35 @@ def setup_provider(provider: ProviderType, config_manager: ConfigManager) -> boo
     # Check if provider is already configured
     providers = config_manager.get_configured_providers()
     provider_exists = provider in providers
-    
+
     # If provider exists, check if user wants to add a new model
     is_new_model = False
     existing_models = []
     existing_env_vars = {}
-    
+
     if provider_exists:
         # Get existing models for this provider
         existing_models = config_manager.get_provider_models(provider)
-        
+
         # Display existing models
         console.print("\nExisting models for this provider:", style="bold cyan")
         for i, model in enumerate(existing_models, 1):
             is_default = model == providers[provider].get("default_model")
             console.print(f"  {i}. {model}" + (" (default)" if is_default else ""))
-        
+
         # Ask if user wants to add a new model or reconfigure
         action = Prompt.ask(
             "\nWhat would you like to do?",
             choices=["add", "reconfigure"],
-            default="add"
+            default="add",
         )
-        
+
         is_new_model = action == "add"
-        
+
         if is_new_model:
-            console.print("\nAdding a new model to existing provider", style="bold green")
+            console.print(
+                "\nAdding a new model to existing provider", style="bold green"
+            )
             # Reuse existing credentials
             existing_env_vars = config_manager.get_provider_credentials(provider)
         else:
@@ -204,9 +206,7 @@ def setup_provider(provider: ProviderType, config_manager: ConfigManager) -> boo
         console.print("\nPlease refer to LiteLLM documentation for model names:")
         console.print("https://docs.litellm.ai/docs/providers")
         # For OTHER providers, we just want the model name without the provider prefix
-        model_name = Prompt.ask(
-            "Enter the model name"
-        ).strip()
+        model_name = Prompt.ask("Enter the model name").strip()
 
     elif provider == ProviderType.AZURE:
         console.print(
@@ -240,7 +240,9 @@ def setup_provider(provider: ProviderType, config_manager: ConfigManager) -> boo
     # Set as default model?
     set_as_default = False
     if is_new_model and existing_models:
-        set_as_default = Confirm.ask(f"Set {model_name} as the default model for {config.name}?")
+        set_as_default = Confirm.ask(
+            f"Set {model_name} as the default model for {config.name}?"
+        )
 
     # Validate only if we have new env_vars or a new model
     if not is_new_model or not provider_exists:
@@ -255,7 +257,11 @@ def setup_provider(provider: ProviderType, config_manager: ConfigManager) -> boo
 
     is_first = len(config_manager.get_configured_providers()) == 0
     provider_config = {
-        "default_model": model_name if set_as_default or not is_new_model else providers[provider].get("default_model"),
+        "default_model": (
+            model_name
+            if set_as_default or not is_new_model
+            else providers[provider].get("default_model")
+        ),
         "env_vars": list(env_vars.keys()),
     }
 
@@ -268,9 +274,9 @@ def setup_provider(provider: ProviderType, config_manager: ConfigManager) -> boo
         env_vars,
         is_default=is_first,
         additional_config=provider_config if provider == ProviderType.OTHER else None,
-        is_new_model=is_new_model
+        is_new_model=is_new_model,
     )
-    
+
     return True
 
 
@@ -284,16 +290,16 @@ def initial_setup():
         # More detailed ASCII art logo
         logo = """
             [gradient(#4B56D2,#82AAAD)]
-                                                             
-               [bold white]██╗      ██████╗  ██████╗ ██████╗ ██╗     ███╗   ███╗[/bold white]   
-               [bold white]██║     ██╔═══██╗██╔═══██╗██╔══██╗██║     ████╗ ████║[/bold white]   
-               [bold white]██║     ██║   ██║██║   ██║██████╔╝██║     ██╔████╔██║[/bold white]   
-               [bold white]██║     ██║   ██║██║   ██║██╔═══╝ ██║     ██║╚██╔╝██║[/bold white]   
-               [bold white]███████╗╚██████╔╝╚██████╔╝██║     ███████╗██║ ╚═╝ ██║[/bold white]   
-               [bold white]╚══════╝ ╚═════╝  ╚═════╝ ╚═╝     ╚══════╝╚═╝     ╚═╝[/bold white]   
-                                                             
-               [italic #F5F5F5]Language Models at your command[/italic #F5F5F5]                
-                                                             
+
+               [bold white]██╗      ██████╗  ██████╗ ██████╗ ██╗     ███╗   ███╗[/bold white]
+               [bold white]██║     ██╔═══██╗██╔═══██╗██╔══██╗██║     ████╗ ████║[/bold white]
+               [bold white]██║     ██║   ██║██║   ██║██████╔╝██║     ██╔████╔██║[/bold white]
+               [bold white]██║     ██║   ██║██║   ██║██╔═══╝ ██║     ██║╚██╔╝██║[/bold white]
+               [bold white]███████╗╚██████╔╝╚██████╔╝██║     ███████╗██║ ╚═╝ ██║[/bold white]
+               [bold white]╚══════╝ ╚═════╝  ╚═════╝ ╚═╝     ╚══════╝╚═╝     ╚═╝[/bold white]
+
+               [italic #F5F5F5]Language Models at your command[/italic #F5F5F5]
+
                                                               [/gradient(#4B56D2,#82AAAD)]"""
 
         description = """
@@ -311,7 +317,9 @@ def initial_setup():
         [dim white]Use arrow keys to navigate • Press Enter to select • Press 'q' to quit[/dim white]"""
 
         title_panel = Panel(
-            Align.center(Text.from_markup(f"{logo}\n{description}\n{footer}"), vertical="middle"),
+            Align.center(
+                Text.from_markup(f"{logo}\n{description}\n{footer}"), vertical="middle"
+            ),
             border_style="bright_blue",
             padding=(1, 2),
             title="[bold white]🔧 Configuration Setup[/bold white]",
@@ -335,17 +343,19 @@ def initial_setup():
             provider_table.add_column("Provider", style="cyan")
             provider_table.add_column("Models", style="green")
             provider_table.add_column("Default Model", style="yellow")
-            
+
             for provider, config in existing_providers.items():
-                display_name = config_manager.get_provider_display_name(provider, config)
+                display_name = config_manager.get_provider_display_name(
+                    provider, config
+                )
                 default_model = config.get("default_model", "")
-                
+
                 # Get all models for this provider
                 models = config_manager.get_provider_models(provider)
                 models_str = ", ".join(models)
-                
+
                 provider_table.add_row(display_name, models_str, default_model)
-            
+
             console.print(provider_table)
 
         console.print("\nAvailable providers:", style="bold")
@@ -371,7 +381,9 @@ def initial_setup():
             if not is_first_setup:
                 handle_default_provider_selection(config_manager, provider)
 
-            if not Confirm.ask("\nWould you like to configure another provider or model?"):
+            if not Confirm.ask(
+                "\nWould you like to configure another provider or model?"
+            ):
                 break
         else:
             console.print("❌  Provider configuration failed", style="bold red")
@@ -392,9 +404,7 @@ def initial_setup():
         console.print(
             '[bright_green]$[/bright_green] [white]cat error.log | looplm "Explain this error and suggest solutions"[/white]'
         )
-        console.print(
-            '\n[dim white]For a specific model, use:[/dim white]'
-        )
+        console.print("\n[dim white]For a specific model, use:[/dim white]")
         console.print(
             '[bright_green]$[/bright_green] [white]looplm --model <model-name> "Your prompt here"[/white]'
         )

@@ -14,8 +14,10 @@ import requests
 from markitdown import MarkItDown
 from markitdown._markitdown import UnsupportedFormatException
 
+
 class FileProcessingError(Exception):
     """Custom exception for file processing errors"""
+
     def __init__(self, message: str, file_path: str):
         self.file_path = file_path
         self.message = message
@@ -77,17 +79,18 @@ class FilePreprocessor:
     def process_prompt(self, prompt: str, raise_errors: bool = True) -> str:
         """
         Process a prompt and replace all @file directives with file contents.
-        
+
         Args:
             prompt: The input prompt containing @file directives
             raise_errors: If True, raises exceptions; if False, returns error messages
-            
+
         Returns:
             str: Processed prompt with file contents or error messages included
-            
+
         Raises:
             FileProcessingError: If raise_errors is True and an error occurs
         """
+
         def replace_match(match):
             file_path = match.group(1)
             try:
@@ -96,7 +99,7 @@ class FilePreprocessor:
                 if raise_errors:
                     raise FileProcessingError(str(e), file_path)
                 return f"Error processing @file({file_path}): {str(e)}"
-        
+
         try:
             # Process all patterns using precompiled regex
             prompt = self.QUOTED_PATTERN.sub(replace_match, prompt)
@@ -256,10 +259,11 @@ class FilePreprocessor:
             return result.text_content
         except UnsupportedFormatException as e:
             # Get the unsupported format from the error message
-            unsupported_format = file_path.suffix.lower() if file_path.suffix.lower() else 'unknown'
+            unsupported_format = (
+                file_path.suffix.lower() if file_path.suffix.lower() else "unknown"
+            )
             raise FileProcessingError(
-                f"File format '{unsupported_format}' is not supported.",
-                str(file_path)
+                f"File format '{unsupported_format}' is not supported.", str(file_path)
             )
         except Exception as e:
             raise ValueError(f"Unsupported file format or conversion error: {str(e)}")

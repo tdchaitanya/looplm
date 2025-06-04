@@ -1,17 +1,20 @@
 # src/looplm/chat/console.py
 
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional
+
 import pyperclip
 from prompt_toolkit.key_binding import KeyBindings
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
-from pathlib import Path
+
 from ..config.manager import ConfigManager
 from .prompt_manager import PromptManager
 from .session import ChatSession
+
 
 class ChatConsole:
     """Handles chat UI rendering and interaction"""
@@ -19,18 +22,17 @@ class ChatConsole:
     def __init__(self, console: Optional[Console] = None):
         """Initialize chat console"""
         self.console = console or Console(
-            force_terminal=True, force_interactive=True, width=None,
+            force_terminal=True,
+            force_interactive=True,
+            width=None,
         )
-        self.prompt_manager = PromptManager(
-            console=self.console,
-            base_path=Path.cwd()
-        )
+        self.prompt_manager = PromptManager(console=self.console, base_path=Path.cwd())
         self.current_session = None
         # Add key bindings for copying
         kb = KeyBindings()
 
-        @kb.add('c-b')  # Ctrl+B
-        @kb.add('escape', 'b')
+        @kb.add("c-b")  # Ctrl+B
+        @kb.add("escape", "b")
         def copy_to_clipboard(event):
             """Copy latest response to clipboard"""
             if self.current_session and self.current_session.latest_response:
@@ -38,10 +40,9 @@ class ChatConsole:
                     pyperclip.copy(self.current_session.latest_response)
                 except Exception as e:
                     pass
-        
+
         self.key_bindings = kb
 
-            
     def display_welcome(self):
         """Display welcome message and instructions"""
         config_manager = ConfigManager()
@@ -57,28 +58,29 @@ class ChatConsole:
 
         for provider, config in providers.items():
             display_name = config_manager.get_provider_display_name(provider, config)
-            
+
             # Get all models for this provider
             models = config_manager.get_provider_models(provider)
             models_str = ", ".join(models)
-            
+
             default_model = config.get("default_model", "")
             status = "DEFAULT" if provider == default_provider else "Configured"
-            
+
             provider_table.add_row(display_name, models_str, default_model, status)
 
         # Get available commands from the CommandManager
         from looplm.commands import CommandManager
+
         command_manager = CommandManager()
         available_commands = command_manager.get_available_commands()
-        
+
         # Combined commands table
         commands_table = Table(
             title="LoopLM Commands & Shortcuts",
             title_style="bold blue",
             border_style="blue",
             show_header=True,
-            header_style="bold cyan"
+            header_style="bold cyan",
         )
 
         commands_table.add_column("Command", style="cyan", width=30)
@@ -111,7 +113,7 @@ class ChatConsole:
                 if cmd_name != "shell":
                     # Standard @ commands
                     commands_table.add_row(f"@{cmd_name}(path)", processor.description)
-        
+
         # Add shell command with $() syntax
         shell_processor = command_manager.get_processor("shell")
         if shell_processor:
@@ -127,7 +129,7 @@ class ChatConsole:
         self.console.print("\n")
         self.console.print(commands_table)
         self.console.print("\n")
-        
+
     def display_sessions(self, sessions: List[Dict]):
         """Display list of available chat sessions"""
         if not sessions:
@@ -243,13 +245,12 @@ class ChatConsole:
     def prompt_user(self) -> str:
         """Get user input with improved prompt and file completion"""
         timestamp = datetime.now()
-        time_str = timestamp.strftime('%H:%M')
+        time_str = timestamp.strftime("%H:%M")
         prefix = f"{time_str} User ► "
 
         # Use PromptManager for input with completion and key bindings
         user_input = self.prompt_manager.get_input(
-            f"\n{time_str}{prefix}",
-            key_bindings=self.key_bindings
+            f"\n{time_str}{prefix}", key_bindings=self.key_bindings
         )
 
         if user_input.lower() in ("exit", "quit"):
@@ -257,13 +258,14 @@ class ChatConsole:
 
         return user_input.strip()
 
-    def set_current_session(self, session: 'ChatSession'):
+    def set_current_session(self, session: "ChatSession"):
         """Set current active session for key bindings"""
         self.current_session = session
 
     def display_error(self, message: str):
         """Display error message"""
         from rich.markup import escape
+
         # Escape any Rich markup in the error message
         safe_message = escape(message)
         self.console.print(f"\nError: {safe_message}", style="bold red")

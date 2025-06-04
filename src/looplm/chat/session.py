@@ -3,22 +3,19 @@
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional
 from uuid import uuid4
-from pathlib import Path
 
-from ..utils.readline_compatibility import readline
 from litellm import completion
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.style import Style
 from rich.text import Text
 
+from ..commands import CommandManager
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
-from ..commands import CommandManager
 
 
 @dataclass
@@ -115,8 +112,8 @@ class ChatSession:
             self.custom_provider = custom_provider
 
     def _get_provider_and_model(
-            self, provider_name: Optional[str] = None, model_name: Optional[str] = None
-        ) -> tuple[ProviderType, str, Optional[str]]:
+        self, provider_name: Optional[str] = None, model_name: Optional[str] = None
+    ) -> tuple[ProviderType, str, Optional[str]]:
         """Get provider and model configuration"""
         if provider_name:
             try:
@@ -125,24 +122,31 @@ class ChatSession:
                 # Check if this is a custom provider name
                 providers = self.config_manager.get_configured_providers()
                 found = False
-                
+
                 # First check for custom (OTHER) providers
                 for p_type, p_config in providers.items():
-                    if p_type == ProviderType.OTHER and p_config.get("provider_name") == provider_name:
+                    if (
+                        p_type == ProviderType.OTHER
+                        and p_config.get("provider_name") == provider_name
+                    ):
                         provider = ProviderType.OTHER
                         found = True
                         break
-                
+
                 if not found:
                     # If not found in OTHER providers, check if it matches any provider name more flexibly
                     # This handles cases like 'groq' not being an exact enum match but a configured provider
                     for provider_type, config in providers.items():
-                        provider_display = self.config_manager.get_provider_display_name(provider_type, config).lower()
+                        provider_display = (
+                            self.config_manager.get_provider_display_name(
+                                provider_type, config
+                            ).lower()
+                        )
                         if provider_name.lower() == provider_display:
                             provider = provider_type
                             found = True
                             break
-                    
+
                     if not found:
                         raise ValueError(f"Invalid provider: {provider_name}")
 
@@ -162,7 +166,9 @@ class ChatSession:
                 if models:
                     default_model = models[0]
                 else:
-                    raise ValueError(f"No models configured for provider {provider_name}")
+                    raise ValueError(
+                        f"No models configured for provider {provider_name}"
+                    )
 
             actual_name = (
                 provider_config.get("provider_name")
@@ -276,8 +282,12 @@ class ChatSession:
         self.updated_at = datetime.now()
 
     def send_message(
-            self, content: str, stream: bool = True, show_tokens: bool = False, debug: bool = False
-        ) -> str:
+        self,
+        content: str,
+        stream: bool = True,
+        show_tokens: bool = False,
+        debug: bool = False,
+    ) -> str:
         """
         Send a message and get response.
 
@@ -299,22 +309,23 @@ class ChatSession:
         try:
             # Process all commands in the message using the CommandManager
             command_manager = CommandManager(base_path=self.base_path)
-            
+
             # Process all commands in the message
             import asyncio
+
             try:
                 loop = asyncio.get_event_loop()
             except RuntimeError:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                
+
             processed_result = loop.run_until_complete(
                 command_manager.process_text(content)
             )
-            
+
             # Unpack the result - now includes processed text and image metadata
             processed_content, image_metadata = processed_result
-            
+
             if debug:
                 # In debug mode, just display the processed content
                 self.console.print("\nProcessed Content:", style="bold blue")
@@ -324,10 +335,10 @@ class ChatSession:
                     for img in image_metadata:
                         self.console.print(img)
                 return processed_content
-            
+
             # Only proceed with the LLM if command processing succeeded
             self.config_manager._prepare_environment(self.provider.value)
-    
+
             # Add user message
             user_msg = Message("user", processed_content)
             self.messages.append(user_msg)
@@ -348,66 +359,68 @@ class ChatSession:
                     actual_model = self.model
                 else:
                     # Only add prefix for certain providers that need it
-                    if self.provider in [ProviderType.GEMINI, ProviderType.BEDROCK, ProviderType.AZURE]:
+                    if self.provider in [
+                        ProviderType.GEMINI,
+                        ProviderType.BEDROCK,
+                        ProviderType.AZURE,
+                    ]:
                         actual_model = f"{self.provider.value}/{self.model}"
                     else:
                         # For most providers like OpenAI, Anthropic, Groq, etc. don't add prefix
                         actual_model = self.model
 
-            # Check if the model supports vision 
+            # Check if the model supports vision
             try:
                 import litellm
+
                 model_supports_vision = litellm.supports_vision(model=actual_model)
             except Exception:
                 # If we can't import litellm or check, assume model doesn't support vision
                 model_supports_vision = False
                 self.console.print(
                     f"\nWarning: Unable to verify if model {actual_model} supports vision. Proceeding with text-only input.",
-                    style="bold yellow"
+                    style="bold yellow",
                 )
 
             # Get messages for API
             messages = self.get_messages_for_api()
-            
+
             # If we have images and the model supports vision, convert message format
             if image_metadata and model_supports_vision:
                 # Update the last user message to have content as an array with text and images
                 last_message = messages[-1]
                 if last_message["role"] == "user":
                     # Create new content list with text and images
-                    content_list = [
-                        {
-                            "type": "text",
-                            "text": processed_content
-                        }
-                    ]
-                    
+                    content_list = [{"type": "text", "text": processed_content}]
+
                     # Add each image
                     for img in image_metadata:
                         content_list.append(img)
-                    
+
                     # Replace content with the list
                     last_message["content"] = content_list
             elif image_metadata and not model_supports_vision:
                 # Warn that the model doesn't support images
                 self.console.print(
                     f"\nWarning: Model {actual_model} does not support vision input. Images will be ignored.",
-                    style="bold yellow"
+                    style="bold yellow",
                 )
 
             if stream:
-                return self._handle_streaming_response(actual_model, messages, show_tokens)
+                return self._handle_streaming_response(
+                    actual_model, messages, show_tokens
+                )
             else:
                 return self._handle_normal_response(actual_model, messages, show_tokens)
 
         except Exception as e:
             from rich.markup import escape
+
             error_message = escape(str(e))
             raise Exception(f"Error sending message: {error_message}")
-        
+
     def __del__(self):
         """Cleanup when session is destroyed."""
-        pass
 
     def _handle_streaming_response(
         self, model: str, messages: List[Dict], show_tokens: bool = False

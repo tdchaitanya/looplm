@@ -12,10 +12,16 @@ from .persistence import SessionManager
 from .prompts import PromptsManager
 from .session import ChatSession
 
+
 class CommandHandler:
     """Handles chat commands and orchestrates components"""
 
-    def __init__(self, provider: Optional[str] = None, model: Optional[str] = None,  debug: bool = False):
+    def __init__(
+        self,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        debug: bool = False,
+    ):
         """Initialize command handler"""
         self.console = ChatConsole()
         self.session_manager = SessionManager()
@@ -225,30 +231,32 @@ class CommandHandler:
         # Display available providers
         providers = self.config_manager.get_configured_providers()
         self.console.display_info("\nConfigured providers:")
-        
+
         for provider, config in providers.items():
             provider_name = self.config_manager.get_provider_display_name(
                 provider, config
             )
             models = config.get("models", [config.get("default_model")])
             default_model = config.get("default_model")
-            
+
             self.console.display_info(f"  • {provider_name}:")
             for model in models:
                 is_default = model == default_model
-                self.console.display_info(f"      - {model}" + (" (default)" if is_default else ""))
+                self.console.display_info(
+                    f"      - {model}" + (" (default)" if is_default else "")
+                )
 
         # Get provider selection
         provider_input = Prompt.ask(
             "\nEnter provider name (or press Enter to keep current)"
         )
-        
+
         if provider_input:
             # If provider selected, show its models
             try:
                 # Try to find the provider
                 selected_provider = None
-                
+
                 # Try to get provider as ProviderType directly
                 try:
                     selected_provider = ProviderType(provider_input)
@@ -257,40 +265,46 @@ class CommandHandler:
                 except ValueError:
                     # Not a direct enum match
                     pass
-                
+
                 # Check if it's a custom provider
                 if selected_provider is None:
                     for p, config in providers.items():
-                        if p == ProviderType.OTHER and config.get("provider_name") == provider_input:
+                        if (
+                            p == ProviderType.OTHER
+                            and config.get("provider_name") == provider_input
+                        ):
                             selected_provider = p
                             break
-                
+
                 # Check if it matches any provider display name
                 if selected_provider is None:
                     for p, config in providers.items():
-                        display_name = self.config_manager.get_provider_display_name(p, config).lower()
+                        display_name = self.config_manager.get_provider_display_name(
+                            p, config
+                        ).lower()
                         if provider_input.lower() == display_name:
                             selected_provider = p
                             break
-                
+
                 if selected_provider is None:
                     self.console.display_error(f"Provider {provider_input} not found")
                     return True
-                
+
                 # Get models for selected provider
                 provider_config = providers[selected_provider]
-                models = provider_config.get("models", [provider_config.get("default_model")])
-                
+                models = provider_config.get(
+                    "models", [provider_config.get("default_model")]
+                )
+
                 if models:
-                    self.console.display_info(f"\nAvailable models for {provider_input}:")
+                    self.console.display_info(
+                        f"\nAvailable models for {provider_input}:"
+                    )
                     for i, model in enumerate(models, 1):
                         self.console.display_info(f"  {i}. {model}")
-                    
-                    model_choice = Prompt.ask(
-                        "Enter model number or name",
-                        default="1"
-                    )
-                    
+
+                    model_choice = Prompt.ask("Enter model number or name", default="1")
+
                     # Convert choice to model name if it's a number
                     model_input = None
                     try:
@@ -303,7 +317,7 @@ class CommandHandler:
                         model_input = model_choice
                 else:
                     model_input = Prompt.ask("Enter model name")
-                
+
                 # Use the display name for better UX
                 display_name = self.config_manager.get_provider_display_name(
                     selected_provider, provider_config
@@ -319,18 +333,17 @@ class CommandHandler:
             # Just changing the model for current provider
             current_provider = session.provider
             provider_config = providers.get(current_provider, {})
-            models = provider_config.get("models", [provider_config.get("default_model")])
-            
+            models = provider_config.get(
+                "models", [provider_config.get("default_model")]
+            )
+
             if models:
                 self.console.display_info("\nAvailable models for current provider:")
                 for i, model in enumerate(models, 1):
                     self.console.display_info(f"  {i}. {model}")
-                
-                model_choice = Prompt.ask(
-                    "Enter model number or name",
-                    default="1"
-                )
-                
+
+                model_choice = Prompt.ask("Enter model number or name", default="1")
+
                 # Convert choice to model name if it's a number
                 model_input = None
                 try:
@@ -343,12 +356,12 @@ class CommandHandler:
                     model_input = model_choice
             else:
                 model_input = Prompt.ask("Enter model name")
-            
+
             session.set_model(model_input)
             self.console.display_success(f"Switched to model: {model_input}")
 
         return True
-    
+
     def _handle_system(self) -> bool:
         """Handle system command"""
         if not self.session_manager.active_session:
@@ -402,12 +415,12 @@ class CommandHandler:
                 save = Prompt.ask(
                     "Save this prompt? (y/n)", choices=["y", "n"], default="n"
                 )
-    
+
                 if save.lower() == "y":
                     name = Prompt.ask("Enter name for this prompt")
                     self.prompts_manager.save_prompt(name, new_prompt)
                     self.console.display_success(f"Prompt saved as '{name}'")
-    
+
                 session.set_system_prompt(new_prompt)
                 self.console.display_success("System prompt updated")
 
@@ -488,7 +501,7 @@ class CommandHandler:
 
             # Connect session to console for clipboard access
             self.console.set_current_session(session)
-            
+
             # Set default system prompt
             default_prompt = self.prompts_manager.get_prompt("default")
             session.set_system_prompt(default_prompt)
@@ -524,40 +537,42 @@ class CommandHandler:
 
             except Exception as e:
                 self.console.display_error(str(e))
-    
+
     def _get_multiline_input(self, current_text: str = "") -> str:
         """Get multi-line input from user with instructions
-        
+
         Args:
             current_text: Optional existing text to pre-fill
-            
+
         Returns:
             str: Complete multi-line input
         """
-        self.console.display_info("\nEnter your prompt. Type ':done' on a new line to finish.")
+        self.console.display_info(
+            "\nEnter your prompt. Type ':done' on a new line to finish."
+        )
         self.console.display_info("To cancel, type ':cancel' or use Ctrl+C")
-        
+
         lines = []
         if current_text:
-            lines.extend(current_text.split('\n'))
+            lines.extend(current_text.split("\n"))
             for line in lines:
                 self.console.display_info(line)
-        
+
         while True:
             try:
                 line = Prompt.ask("", default="")
                 # Check for termination commands
-                if line.strip().lower() == ':done':
+                if line.strip().lower() == ":done":
                     break
-                if line.strip().lower() == ':cancel':
+                if line.strip().lower() == ":cancel":
                     return ""
                 lines.append(line)
             except KeyboardInterrupt:
                 self.console.display_info("\nCancelled input.")
                 return ""
-                
+
         return "\n".join(lines)
-        
+
     def _create_new_session(self) -> ChatSession:
         """Create a new session with provider/model overrides if specified"""
         session = self.session_manager.create_session()

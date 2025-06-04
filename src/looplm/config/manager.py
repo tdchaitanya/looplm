@@ -48,11 +48,11 @@ class ConfigManager:
         if model_name:
             # Update the default model for the provider
             provider_config = config["providers"][provider.value]
-            
+
             # Check if we're using the new multi-model structure
             if "models" in provider_config:
                 provider_config["default_model"] = model_name
-                
+
                 # Make sure the model exists in the models list
                 if model_name not in provider_config["models"]:
                     provider_config["models"].append(model_name)
@@ -139,14 +139,14 @@ class ConfigManager:
         """
         secrets = self.load_secrets()
         config = self.load_config()
-        
+
         # Initialize providers if it doesn't exist
         if "providers" not in config:
             config["providers"] = {}
-            
+
         # Check if we're adding to an existing provider
         provider_exists = provider.value in config.get("providers", {})
-        
+
         # Only save env vars if this is a new provider or we're explicitly updating them
         if not provider_exists or not is_new_model:
             if provider == ProviderType.OTHER:
@@ -155,7 +155,7 @@ class ConfigManager:
             else:
                 for key, value in env_vars.items():
                     secrets[f"{provider.value}_{key}"] = value
-            
+
             self.save_secrets(secrets)
 
         # Create or update the provider configuration
@@ -171,25 +171,29 @@ class ConfigManager:
         else:
             # Existing provider
             provider_config = config["providers"][provider.value]
-            
+
             # Update env_vars list if needed
             if not is_new_model:
                 provider_config["env_vars"] = list(env_vars.keys())
-                
+
             # Update or add models
             if "models" not in provider_config:
                 # Migrate from old format to new format
                 current_model = provider_config.get("default_model")
-                provider_config["models"] = [current_model, model_name] if current_model and current_model != model_name else [model_name]
+                provider_config["models"] = (
+                    [current_model, model_name]
+                    if current_model and current_model != model_name
+                    else [model_name]
+                )
             else:
                 # Add new model if it's not already in the list
                 if model_name not in provider_config["models"]:
                     provider_config["models"].append(model_name)
-            
+
             # Update default model if specified
             if is_new_model:
                 provider_config["default_model"] = model_name
-            
+
             # Update additional config if provided
             if additional_config:
                 provider_config.update(additional_config)
@@ -211,7 +215,7 @@ class ConfigManager:
         """
         config = self.load_config()
         provider_config = config.get("providers", {}).get(provider.value, {})
-        
+
         # Check if we're using the new multi-model structure
         if "models" in provider_config:
             return provider_config["models"]
@@ -351,7 +355,7 @@ class ConfigManager:
 
         if config.get("default_provider") == provider.value:
             config.pop("default_provider", None)
-            
+
             # Remove default_model from root config if it exists
             if "default_model" in config:
                 config.pop("default_model", None)
@@ -361,7 +365,9 @@ class ConfigManager:
                 config["default_provider"] = remaining[0]
                 # Use "default_model" key instead of "model"
                 if "default_model" in config["providers"][remaining[0]]:
-                    config["default_model"] = config["providers"][remaining[0]]["default_model"]
+                    config["default_model"] = config["providers"][remaining[0]][
+                        "default_model"
+                    ]
 
         self.save_secrets(secrets)
         self.save_config(config)

@@ -8,13 +8,11 @@ from litellm.utils import trim_messages
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.style import Style
 from rich.text import Text
 
+from ..commands import CommandManager
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
-from ..commands import CommandManager
 
 
 class ConversationHandler:
@@ -59,27 +57,34 @@ class ConversationHandler:
                 providers = self.config_manager.get_configured_providers()
                 found = False
                 for p_type, p_config in providers.items():
-                    if p_type == ProviderType.OTHER and p_config.get("provider_name") == provider_name:
+                    if (
+                        p_type == ProviderType.OTHER
+                        and p_config.get("provider_name") == provider_name
+                    ):
                         provider = ProviderType.OTHER
                         found = True
                         break
-                
+
                 if not found:
                     # If not found in OTHER providers, check if it matches any provider name more flexibly
                     # This handles cases like 'groq' not being an exact enum match but a configured provider
                     for provider_type, config in providers.items():
-                        provider_display = self.config_manager.get_provider_display_name(provider_type, config).lower()
+                        provider_display = (
+                            self.config_manager.get_provider_display_name(
+                                provider_type, config
+                            ).lower()
+                        )
                         if provider_name.lower() == provider_display:
                             provider = provider_type
                             found = True
                             break
-                    
+
                     if not found:
                         raise ValueError(f"Invalid provider: {provider_name}")
-            
+
             # Now get the provider configuration
             provider_config = self._get_provider_config(provider)
-            
+
             # If model is specified, use it
             if model_name:
                 actual_name = (
@@ -88,7 +93,7 @@ class ConversationHandler:
                     else None
                 )
                 return provider, model_name, actual_name
-            
+
             # Otherwise use default model
             default_model = provider_config.get("default_model")
             if not default_model:
@@ -97,8 +102,10 @@ class ConversationHandler:
                 if models:
                     default_model = models[0]
                 else:
-                    raise ValueError(f"No models configured for provider {provider_name}")
-                
+                    raise ValueError(
+                        f"No models configured for provider {provider_name}"
+                    )
+
             actual_name = (
                 provider_config.get("provider_name")
                 if provider == ProviderType.OTHER
@@ -112,9 +119,9 @@ class ConversationHandler:
             raise ValueError(
                 "No default provider configured. Run 'looplm --configure' first."
             )
-            
+
         provider_config = self._get_provider_config(provider)
-        
+
         # If model is specified, use it with the default provider
         if model_name:
             actual_name = (
@@ -123,7 +130,7 @@ class ConversationHandler:
                 else None
             )
             return provider, model_name, actual_name
-            
+
         # Otherwise use default provider and model
         actual_name = (
             provider_config.get("provider_name")
@@ -135,7 +142,7 @@ class ConversationHandler:
     def _stream_markdown(self, content: str, live: Live) -> None:
         """Update live display with markdown-formatted content"""
         try:
-            markdown = Markdown(content, code_theme='monokai')
+            markdown = Markdown(content, code_theme="monokai")
             # panel = Panel(
             #     markdown,
             #     style=Style(bgcolor="rgb(40,44,52)"),
@@ -157,8 +164,8 @@ class ConversationHandler:
             live.update(text)
 
     def handle_prompt(
-            self, prompt: str, provider: Optional[str] = None, model: Optional[str] = None
-        ) -> None:
+        self, prompt: str, provider: Optional[str] = None, model: Optional[str] = None
+    ) -> None:
         """
         Handle a user prompt and stream the response.
 
@@ -172,7 +179,9 @@ class ConversationHandler:
         """
         try:
             # Process the prompt using the command manager
-            processed_content, image_metadata = self.command_manager.process_text_sync(prompt)
+            processed_content, image_metadata = self.command_manager.process_text_sync(
+                prompt
+            )
 
             provider_type, model_name, custom_provider = self._get_provider_and_model(
                 provider, model
@@ -196,44 +205,44 @@ class ConversationHandler:
                     actual_model = model_name
                 else:
                     # Only add prefix for certain providers that need it
-                    if provider_type in [ProviderType.GEMINI, ProviderType.BEDROCK, ProviderType.AZURE]:
+                    if provider_type in [
+                        ProviderType.GEMINI,
+                        ProviderType.BEDROCK,
+                        ProviderType.AZURE,
+                    ]:
                         actual_model = f"{provider_type.value}/{model_name}"
                     else:
                         # For most providers like OpenAI, Anthropic, Groq, etc. don't add prefix
                         actual_model = model_name
-            
+
             # Check if the model supports vision
             try:
                 import litellm
+
                 model_supports_vision = litellm.supports_vision(model=actual_model)
             except Exception:
                 # If we can't import litellm or check, assume model doesn't support vision
                 model_supports_vision = False
                 self.console.print(
                     f"\nWarning: Unable to verify if model {actual_model} supports vision. Proceeding with text-only input.",
-                    style="bold yellow"
+                    style="bold yellow",
                 )
 
             # Create messages based on whether we have images
             if image_metadata and model_supports_vision:
                 # Create content as an array with text and images
-                content_list = [
-                    {
-                        "type": "text",
-                        "text": processed_content
-                    }
-                ]
-                
+                content_list = [{"type": "text", "text": processed_content}]
+
                 # Add each image
                 for img in image_metadata:
                     content_list.append(img)
-                
+
                 messages = [{"role": "user", "content": content_list}]
             elif image_metadata and not model_supports_vision:
                 # Warn that the model doesn't support images
                 self.console.print(
                     f"\nWarning: Model {actual_model} does not support vision input. Images will be ignored.",
-                    style="bold yellow"
+                    style="bold yellow",
                 )
                 messages = [{"role": "user", "content": processed_content}]
             else:
