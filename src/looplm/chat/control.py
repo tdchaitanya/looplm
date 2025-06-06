@@ -7,9 +7,9 @@ from rich.table import Table
 
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
+from ..utils.prompts import PromptsManager
 from .console import ChatConsole
 from .persistence import SessionManager
-from .prompts import PromptsManager
 from .session import ChatSession
 
 
