@@ -8,6 +8,7 @@ from rich.table import Table
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
 from ..utils.prompts import PromptsManager
+from .compact_handler import CompactHandler
 from .console import ChatConsole
 from .persistence import SessionManager
 from .session import ChatSession
@@ -27,6 +28,7 @@ class CommandHandler:
         self.session_manager = SessionManager()
         self.config_manager = ConfigManager()
         self.prompts_manager = PromptsManager()
+        self.compact_handler = CompactHandler(self.console, self.prompts_manager)
         self.override_provider = provider
         self.override_model = model
         self.debug = debug
@@ -76,6 +78,12 @@ class CommandHandler:
             return self._handle_system()
         elif cmd == "usage":
             return self._handle_usage()
+        elif cmd == "compact":
+            return self._handle_compact()
+        elif cmd == "compact-info":
+            return self._handle_compact_info()
+        elif cmd == "compact-reset":
+            return self._handle_compact_reset()
         else:
             self.console.display_error(f"Unknown command: {cmd}")
             return True
@@ -522,6 +530,36 @@ class CommandHandler:
         self.console.display_token_usage(
             f"Token Usage - {session.name}", session.total_usage.to_dict()
         )
+        return True
+
+    def _handle_compact(self) -> bool:
+        """Handle /compact command by summarizing conversation so far using LLM."""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        session = self.session_manager.active_session
+        self.compact_handler.compact_session(session)
+        return True
+
+    def _handle_compact_info(self) -> bool:
+        """Handle /compact-info command to show compact status and statistics."""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        session = self.session_manager.active_session
+        self.compact_handler.show_compact_info(session)
+        return True
+
+    def _handle_compact_reset(self) -> bool:
+        """Handle /compact-reset command to reset compact state."""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        session = self.session_manager.active_session
+        self.compact_handler.reset_compact(session)
         return True
 
     def get_provider_display_info(self, session: ChatSession) -> tuple[str, str]:

@@ -103,6 +103,9 @@ class ChatSession:
     total_usage: TokenUsage = field(default_factory=TokenUsage)
     base_path: Path = field(default_factory=lambda: Path(os.getcwd()))
     latest_response: Optional[str] = None
+    compacted: bool = False
+    compact_summary: Optional[str] = None
+    compact_index: Optional[int] = None
 
     # Configuration
     console: Console = field(
@@ -593,7 +596,7 @@ class ChatSession:
         return content
 
     def to_dict(self) -> Dict:
-        """Convert session to dictionary for serialization"""
+        """Convert session to dictionary for serialization, including compact state."""
         return {
             "id": self.id,
             "name": self.name,
@@ -604,19 +607,59 @@ class ChatSession:
             "provider": self.provider.value if self.provider else None,
             "model": self.model,
             "custom_provider": self.custom_provider,
+            "compacted": self.compacted,
+            "compact_summary": self.compact_summary,
+            "compact_index": self.compact_index,
         }
 
     def get_messages_for_api(self) -> List[Dict[str, str]]:
-        """Get messages in format needed for API calls - only role and content"""
-        return [{"role": msg.role, "content": msg.content} for msg in self.messages]
+        """Get messages in format needed for API calls - only role and content."""
+        if self.is_compacted:
+            msgs = []
+            # System prompt
+            system_msgs = [msg for msg in self.messages if msg.role == "system"]
+            if system_msgs:
+                msgs.append({"role": "system", "content": system_msgs[0].content})
+            # Summary as assistant message
+            msgs.append({"role": "assistant", "content": self.compact_summary})
+            # All messages after compact_index
+            if self.compact_index is not None:
+                for msg in self.messages[self.compact_index :]:
+                    if msg.role != "system":
+                        msgs.append({"role": msg.role, "content": msg.content})
+            return msgs
+        else:
+            return [{"role": msg.role, "content": msg.content} for msg in self.messages]
+
+    def set_compact_summary(self, summary: str):
+        """Set the session as compacted, store summary and index."""
+        self.compacted = True
+        self.compact_summary = summary
+        self.compact_index = len(self.messages)
+        self.updated_at = datetime.now()
+
+    def reset_compact(self):
+        """Reset compact state, use full history again."""
+        self.compacted = False
+        self.compact_summary = None
+        self.compact_index = None
+        self.updated_at = datetime.now()
+
+    @property
+    def is_compacted(self) -> bool:
+        """Return True if session is currently compacted."""
+        return (
+            self.compacted
+            and self.compact_summary is not None
+            and self.compact_index is not None
+        )
 
     @classmethod
     def from_dict(cls, data: Dict) -> "ChatSession":
-        """Create session from dictionary"""
+        """Create session from dictionary, including compact state."""
         messages = [Message.from_dict(msg) for msg in data.get("messages", [])]
         total_usage = TokenUsage.from_dict(data.get("total_usage", {}))
         provider = ProviderType(data["provider"]) if data.get("provider") else None
-
         return cls(
             id=data.get("id", str(uuid4())),
             name=data.get("name", "New Chat"),
@@ -627,4 +670,7 @@ class ChatSession:
             provider=provider,
             model=data.get("model"),
             custom_provider=data.get("custom_provider"),
+            compacted=data.get("compacted", False),
+            compact_summary=data.get("compact_summary"),
+            compact_index=data.get("compact_index"),
         )

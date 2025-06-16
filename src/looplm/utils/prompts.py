@@ -16,6 +16,9 @@ class PromptsManager:
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.prompts_file = self.config_dir / "prompts.json"
 
+        # Shipped prompts directory
+        self.shipped_prompts_dir = Path(__file__).parent.parent / "prompts"
+
         # Create default prompts if file doesn't exist
         if not self.prompts_file.exists():
             self.save_prompts(
@@ -39,8 +42,24 @@ class PromptsManager:
 
     def get_prompt(self, name: str = "default") -> str:
         """Get a specific prompt"""
+        # First check if it's a special shipped prompt
+        if name == "compact":
+            return self.get_compact_prompt()
+
         prompts = self.load_prompts()
         return prompts.get(name, DEFAULT_SYSTEM_PROMPT)
+
+    def get_compact_prompt(self) -> str:
+        """Get the compact prompt from shipped prompts"""
+        compact_file = self.shipped_prompts_dir / "compact.txt"
+        if compact_file.exists():
+            try:
+                return compact_file.read_text(encoding="utf-8").strip()
+            except Exception:
+                pass
+
+        # Fallback if file doesn't exist or can't be read
+        return "Please provide a comprehensive summary of this conversation."
 
     def save_prompt(self, name: str, prompt: str):
         """Save a new prompt"""

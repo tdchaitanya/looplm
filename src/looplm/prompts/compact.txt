@@ -1,0 +1,72 @@
+Your task is to create a comprehensive summary of the conversation so far, capturing all user requests, technical discussions, and work completed or in progress. This summary should be thorough in documenting all relevant details, decisions, and context that would be essential for seamlessly continuing any work or discussion without losing important information.
+
+Before providing your final summary, wrap your analysis in <analysis> tags to organize your thoughts and ensure you've covered all necessary points. In your analysis process:
+
+1. Chronologically analyze each message and section of the conversation. For each section thoroughly identify:
+   - The user's explicit requests, questions, and objectives
+   - Your responses and approach to addressing the user's needs
+   - Key decisions, concepts, methodologies, and patterns discussed
+   - Specific details like names, examples, code snippets, configurations, recommendations, etc.
+
+2. Double-check for accuracy and completeness, ensuring all important elements are thoroughly addressed.
+
+Your summary should include the following sections:
+
+1. **Primary Requests and Objectives**: Capture all of the user's explicit requests, questions, and stated goals in detail
+
+2. **Key Concepts and Topics**: List all important concepts, technologies, methodologies, tools, and subject areas discussed.
+
+3. **Specific Details and Examples**: Document specific items examined, created, or discussed such as:
+   - Files, code sections, configurations
+   - Examples, demonstrations, or illustrations provided
+   - Recommendations, solutions, or approaches suggested
+   - Include relevant snippets, examples, or detailed explanations where applicable
+
+4. **Problem Solving and Solutions**: Document problems addressed, solutions provided, and any ongoing troubleshooting or research efforts.
+
+5. **Pending Items**: Outline any pending tasks, unanswered questions, or follow-up items that have been explicitly mentioned.
+
+6. **Current Focus**: Describe in detail precisely what was being discussed or worked on immediately before this summary request, paying special attention to the most recent messages from both user and assistant. Include specific details and context where applicable.
+
+7. **Potential Next Steps**: List logical next steps that align with the conversation flow and user's stated interests. IMPORTANT: ensure these steps are DIRECTLY in line with the user's explicit requests and the topics being discussed immediately before this summary request. If the current topic was concluded, only suggest next steps if they clearly align with the user's stated objectives. Avoid suggesting tangential topics without confirming user interest first.
+
+8. If there are potential next steps, include direct quotes from the most recent conversation showing exactly what was being discussed and where the conversation left off. This should be verbatim to ensure there's no drift in topic interpretation.
+
+Here's an example of how your output should be structured:
+
+<example>
+<analysis>
+[Your thought process, ensuring all points are covered thoroughly and accurately]
+</analysis>
+
+<summary>
+1. **Primary Requests and Objectives**: [Detailed description]
+
+2. **Key Concepts and Topics**:
+   - [Concept/Topic 1]
+   - [Concept/Topic 2]
+   - [...]
+
+3. **Specific Details and Examples**:
+   - [Item/Example 1]
+     - [Summary of why this item is important]
+     - [Summary of what was discussed or created]
+     - [Relevant details, code, or examples]
+   - [Item/Example 2]
+     - [Relevant details or examples]
+   - [...]
+
+4. **Problem Solving and Solutions**: [Description of problems addressed, solutions provided, and ongoing efforts]
+
+5. **Pending Items**:
+   - [Item 1]
+   - [Item 2]
+   - [...]
+
+6. **Current Focus**: [Precise description of current discussion or work]
+
+7. **Potential Next Steps**: [Optional next steps that align with user objectives]
+</summary>
+</example>
+
+Please provide your summary based on the conversation so far, following this structure and ensuring precision and thoroughness in your response.

@@ -59,6 +59,12 @@ def process_input(args: tuple, piped_input: str = "") -> str:
 @click.option(
     "--debug", is_flag=True, help="Show processed commands without sending to LLM"
 )
+@click.option(
+    "--ui",
+    type=click.Choice(["rich", "textual"], case_sensitive=False),
+    default="rich",
+    help="Choose the chat interface: 'rich' for traditional console or 'textual' for full-page TUI",
+)
 def cli(
     prompt,
     provider,
@@ -69,6 +75,7 @@ def cli(
     set_default,
     status,
     debug,
+    ui,
 ):
     """looplm - LLMs on the command line"""
     config_manager = ConfigManager()
@@ -81,16 +88,23 @@ def cli(
     # chat mode
     if prompt and prompt[0] == "chat":
         try:
-            handler = CommandHandler(provider=provider, model=model, debug=debug)
-            handler.start_session()
+            if ui.lower() == "textual":
+                # Use the new Textual interface
+                from ..chat.textual_ui import run_textual_chat
 
-            if prompt:
-                if handler.session_manager.active_session:
-                    handler.session_manager.active_session.send_message(
-                        prompt, stream=True, show_tokens=False
-                    )
-                else:
-                    console.print("\nSession Closed", style="bold red")
+                run_textual_chat(provider=provider, model=model, debug=debug)
+            else:
+                # Use the traditional Rich interface
+                handler = CommandHandler(provider=provider, model=model, debug=debug)
+                handler.start_session()
+
+                if prompt:
+                    if handler.session_manager.active_session:
+                        handler.session_manager.active_session.send_message(
+                            prompt, stream=True, show_tokens=False
+                        )
+                    else:
+                        console.print("\nSession Closed", style="bold red")
         except Exception as e:
             # Use Rich's escape function to escape any markup in the error message
             from rich.markup import escape

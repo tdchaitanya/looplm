@@ -21,6 +21,7 @@ gitingest = "^0.1.4"
 pyperclip = "^1.9.0"
 litellm = "^1.64.1"
 cryptography = "^44.0.2"
+textual = "^0.87.0"
 gnureadline = { version = ">=8.2.13,<9.0.0", markers = "sys_platform != 'win32'" }
 pyreadline3 = { version = ">=3.4.1,<4.0.0", markers = "sys_platform == 'win32'" }
 

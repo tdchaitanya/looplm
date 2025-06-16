@@ -92,7 +92,10 @@ class CommandCompleter(Completer):
 
 
 class PromptManager:
-    """Manages prompt toolkit integration with custom completions"""
+    """Manages prompt toolkit integration with custom completions and file-based prompt loading"""
+
+    SHIPPED_PROMPT_DIR = Path(__file__).parent.parent / "prompts"
+    USER_PROMPT_DIR = Path.home() / ".looplm" / "prompts"
 
     def __init__(self, console: Console = None, base_path: str = None):
         """Initialize prompt manager
@@ -152,6 +155,34 @@ class PromptManager:
             key_bindings=kb,
             complete_in_thread=True,
         )
+
+        # Load shipped and user prompts
+        self.shipped_prompts = self._load_prompts_from_dir(self.SHIPPED_PROMPT_DIR)
+        self.user_prompts = self._load_prompts_from_dir(self.USER_PROMPT_DIR)
+
+    def _load_prompts_from_dir(self, dir_path: Path) -> dict:
+        prompts = {}
+        if dir_path.exists():
+            for file in dir_path.glob("*.txt"):
+                name = file.stem
+                try:
+                    with open(file, "r", encoding="utf-8") as f:
+                        prompts[name] = f.read().strip()
+                except Exception:
+                    continue
+        return prompts
+
+    def get_prompt(self, name: str) -> str:
+        """Get a prompt by name, preferring user prompt over shipped default."""
+        if name in self.user_prompts:
+            return self.user_prompts[name]
+        if name in self.shipped_prompts:
+            return self.shipped_prompts[name]
+        raise KeyError(f"Prompt '{name}' not found in user or shipped prompts.")
+
+    def get_compact_prompt(self) -> str:
+        """Return the compact prompt (default or user-customized)."""
+        return self.get_prompt("compact")
 
     def create_prompt_fragments(self, prompt_str: str):
         """Create styled prompt fragments"""

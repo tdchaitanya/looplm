@@ -95,6 +95,14 @@ class ChatConsole:
         commands_table.add_row("/rename", "Rename current session")
         commands_table.add_row("/clear, /c", "Clear chat history")
         commands_table.add_row("/clear-last [N]", "Clear last N messages (default: 1)")
+        commands_table.add_row(
+            "/compact",
+            "Summarize and compact conversation so far (reduces context/cost)",
+        )
+        commands_table.add_row("/compact-info", "Show compact status and statistics")
+        commands_table.add_row(
+            "/compact-reset", "Reset compact state and use full history"
+        )
         commands_table.add_row("/quit, /q", "Exit chat session")
         commands_table.add_row("/help, /h", "Show this help message")
 

@@ -23,6 +23,7 @@ LoopLM is a highly customisable command line tool that seamlessly integrates var
 - 🔒 **Secure Configuration**: All API keys and credentials are stored securely using encryption
 - 💻 **Simple CLI**: Intuitive command-line interface for quick access to AI capabilities
 - 💬 **Interactive Chat Mode**: Engage in persistent, interactive conversations with your preferred LLM using looplm chat
+- 🎨 **Modern TUI**: Full-page Terminal User Interface with real-time streaming, session management, and intuitive controls
 - 🔍 **Rich Output**: Beautiful terminal output with markdown support
 - 🔍 **Smart Context**: Maintain conversation context and system prompts for consistent interactions
 
@@ -52,7 +53,11 @@ looplm "Check this log: @file(/var/log/app.log)"
 
 4. Start an interactive chat session:
 ```bash
+# Traditional Rich console interface
 looplm chat
+
+# New full-page Textual interface (recommended)
+looplm chat --ui textual
 ```
 
 ## Why LoopLM?
