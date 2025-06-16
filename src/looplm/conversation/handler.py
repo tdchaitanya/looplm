@@ -8,6 +8,7 @@ from litellm.utils import trim_messages
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.text import Text
 
 from ..commands import CommandManager
@@ -165,7 +166,11 @@ class ConversationHandler:
             live.update(text)
 
     def handle_prompt(
-        self, prompt: str, provider: Optional[str] = None, model: Optional[str] = None
+        self,
+        prompt: str,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        use_progress_streaming: bool = True,
     ) -> None:
         """
         Handle a user prompt and stream the response.
@@ -260,10 +265,46 @@ class ConversationHandler:
                 # Standard text message
                 messages = [{"role": "user", "content": processed_content}]
 
-            with Live(
-                "", refresh_per_second=4, console=self.console, auto_refresh=True
-            ) as live:
-                live.console.width = None
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=self.console,
+                transient=True,
+            ) as progress:
+                # Fun, dynamic messages to improve UX
+                import random
+
+                creative_messages = [
+                    # Thoughtful/Contemplative
+                    f"🤔 Pondering with {model_name}...",
+                    f"🧠 Deep thinking via {model_name}...",
+                    f"💭 Brewing thoughts using {model_name}...",
+                    f"🎯 Crafting response with {model_name}...",
+                    f"🔍 Exploring possibilities with {model_name}...",
+                    # Magical/Mystical
+                    f"🔮 Consulting the AI oracle {model_name}...",
+                    f"✨ Weaving digital magic via {model_name}...",
+                    f"🪄 Conjuring wisdom through {model_name}...",
+                    f"🌟 Channeling cosmic knowledge from {model_name}...",
+                    # Creative/Artistic
+                    f"🎨 Painting words via {model_name}...",
+                    f"🎭 Performing linguistic theatre with {model_name}...",
+                    f"🎼 Composing a response using {model_name}...",
+                    f"📝 Scribing wisdom through {model_name}...",
+                    # Tech/Action
+                    f"⚡ Sparking neural networks in {model_name}...",
+                    f"🚀 Launching query to {model_name}...",
+                    f"⚙️ Processing magic through {model_name}...",
+                    f"🔥 Igniting synapses in {model_name}...",
+                    # Playful/Fun
+                    f"🤖 Having a chat with {model_name}...",
+                    f"🎪 Putting on a thinking show via {model_name}...",
+                    f"🎲 Rolling the dice of wisdom with {model_name}...",
+                    f"🎈 Floating ideas through {model_name}...",
+                ]
+
+                task_description = random.choice(creative_messages)
+                task = progress.add_task(task_description, total=None)
                 accumulated_text = ""
 
                 response = completion(
@@ -273,7 +314,13 @@ class ConversationHandler:
                 for chunk in response:
                     content = chunk.choices[0].delta.content or ""
                     accumulated_text += content
-                    self._stream_markdown(accumulated_text, live)
+
+            # Display the complete response at once using Markdown
+            try:
+                markdown = Markdown(accumulated_text, code_theme="monokai")
+                self.console.print(markdown)
+            except Exception:
+                self.console.print(accumulated_text)
 
         except Exception as e:
             self.console.print(f"Error: {str(e)}", style="bold red")

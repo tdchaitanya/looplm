@@ -271,11 +271,11 @@ class ChatConsole:
         """Get user input with improved prompt and file completion"""
         timestamp = datetime.now()
         time_str = timestamp.strftime("%H:%M")
-        prefix = f"{time_str} User ► "
+        prompt_text = f"{time_str} User ► "
 
         # Use PromptManager for input with completion and key bindings
         user_input = self.prompt_manager.get_input(
-            f"\n{time_str}{prefix}", key_bindings=self.key_bindings
+            f"\n{prompt_text}", key_bindings=self.key_bindings
         )
 
         if user_input.lower() in ("exit", "quit"):

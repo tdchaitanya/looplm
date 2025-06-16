@@ -11,6 +11,7 @@ from litellm import completion, completion_cost
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.text import Text
 
 from ..commands import CommandManager
@@ -322,6 +323,145 @@ class ChatSession:
             text = Text(content)
             live.update(text)
 
+    def _handle_streaming_response_with_progress(
+        self, model: str, messages: List[Dict], show_tokens: bool = False
+    ) -> str:
+        """Handle streaming response with progress animation instead of real-time display"""
+        accumulated_text = ""
+        timestamp = datetime.now()
+
+        self.console.print()  # Add newline before response
+        self.console.print(f"{timestamp.strftime('%H:%M')} ", style="dim", end="")
+        self.console.print("Assistant ▣", style="bright_green")
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=self.console,
+            transient=True,
+        ) as progress:
+            # Create dynamic task description with model info and context
+            provider_display = self.provider.value if self.provider else "unknown"
+
+            # Count non-system messages for context
+            non_system_count = len(
+                [msg for msg in self.messages if msg.role != "system"]
+            )
+
+            # Estimate input tokens roughly (4 chars per token is a common approximation)
+            input_content = " ".join([msg["content"] for msg in messages])
+            estimated_input_tokens = len(input_content) // 4
+
+            if estimated_input_tokens > 1000:
+                token_display = f" (~{estimated_input_tokens//1000}K tokens)"
+            elif estimated_input_tokens > 0:
+                token_display = f" (~{estimated_input_tokens} tokens)"
+            else:
+                token_display = ""
+
+            # Fun, dynamic messages to improve UX
+            import random
+
+            creative_messages = [
+                # Thoughtful/Contemplative
+                # f"🤔 Pondering with {provider_display}/{self.model}{token_display}...",
+                # f"🧠 Deep thinking via {provider_display}/{self.model}{token_display}...",
+                # f"💭 Brewing thoughts using {provider_display}/{self.model}{token_display}...",
+                # f"🎯 Crafting response with {provider_display}/{self.model}{token_display}...",
+                # f"🔍 Exploring possibilities with {provider_display}/{self.model}{token_display}...",
+                # Thoughtful/Contemplative
+                f"🤔 Pondering with {self.model}{token_display}...",
+                f"🧠 Deep thinking via {self.model}{token_display}...",
+                f"💭 Brewing thoughts using {self.model}{token_display}...",
+                f"🎯 Crafting response with {self.model}{token_display}...",
+                f"🔍 Exploring possibilities with {self.model}{token_display}...",
+                # Magical/Mystical
+                f"🔮 Consulting the AI oracle {self.model}{token_display}...",
+                f"✨ Weaving digital magic via {self.model}{token_display}...",
+                f"🪄 Conjuring wisdom through {self.model}{token_display}...",
+                f"🌟 Channeling cosmic knowledge from {self.model}{token_display}...",
+                # Creative/Artistic
+                f"🎨 Painting words via {self.model}{token_display}...",
+                f"🎭 Performing linguistic theatre with {self.model}{token_display}...",
+                f"🎼 Composing a response using {self.model}{token_display}...",
+                f"📝 Scribing wisdom through {self.model}{token_display}...",
+                # Tech/Action
+                f"⚡ Sparking neural networks in {self.model}{token_display}...",
+                f"🚀 Launching query to {self.model}{token_display}...",
+                f"⚙️ Processing magic through {self.model}{token_display}...",
+                f"🔥 Igniting synapses in {self.model}{token_display}...",
+                # Playful/Fun
+                f"🤖 Having a chat with {self.model}{token_display}...",
+                f"🎪 Putting on a thinking show via {self.model}{token_display}...",
+                f"🎲 Rolling the dice of wisdom with {self.model}{token_display}...",
+                f"🎈 Floating ideas through {self.model}{token_display}...",
+            ]
+
+            task_description = random.choice(creative_messages)
+            task = progress.add_task(task_description, total=None)
+
+            response = completion(
+                model=model,
+                messages=messages,
+                stream=True,
+                stream_options={"include_usage": True},
+            )
+
+            final_chunk = None
+            cost = 0.0
+
+            for chunk in response:
+                content = chunk.choices[0].delta.content or ""
+                accumulated_text += content
+
+                if hasattr(chunk, "usage") and chunk.usage is not None:
+                    final_chunk = chunk
+
+        # Extract cost from the final chunk with usage information
+        if final_chunk and hasattr(final_chunk, "usage") and final_chunk.usage:
+            try:
+                cost = completion_cost(final_chunk)
+            except Exception:
+                cost = 0.0
+
+        self.latest_response = accumulated_text
+
+        # Display the complete response at once using Markdown
+        try:
+            markdown = Markdown(accumulated_text)
+            self.console.print(markdown)
+        except Exception:
+            self.console.print(accumulated_text)
+
+        # Add response to history with token usage
+        token_usage = TokenUsage(
+            input_tokens=final_chunk.usage.prompt_tokens,
+            output_tokens=final_chunk.usage.completion_tokens,
+            total_tokens=final_chunk.usage.prompt_tokens
+            + final_chunk.usage.completion_tokens,
+            cost=cost,
+        )
+
+        self.messages.append(
+            Message(
+                "assistant",
+                accumulated_text,
+                timestamp=timestamp,
+                token_usage=token_usage,
+            )
+        )
+        self._update_total_usage(token_usage)
+
+        # Display token usage
+        if show_tokens:
+            self.console.print(
+                f"\n[dim]Token usage - Input: {token_usage.input_tokens}, "
+                f"Output: {token_usage.output_tokens}, "
+                f"Total: {token_usage.total_tokens}, "
+                f"Cost: ${token_usage.cost:.6f}[/dim]"
+            )
+        return accumulated_text
+
     def clear_history(self, keep_system_prompt: bool = True):
         """Clear chat history"""
         system_prompt = None
@@ -342,6 +482,7 @@ class ChatSession:
         stream: bool = True,
         show_tokens: bool = False,
         debug: bool = False,
+        use_progress_streaming: bool = True,
     ) -> str:
         """
         Send a message and get response.
@@ -354,6 +495,7 @@ class ChatSession:
             stream: Whether to stream the response
             show_tokens: Whether to show token usage
             debug: Whether to debug command processing without sending to LLM
+            use_progress_streaming: Whether to use progress animation (True) or real-time streaming (False)
 
         Returns:
             str: Model's response
@@ -462,9 +604,14 @@ class ChatSession:
                 )
 
             if stream:
-                return self._handle_streaming_response(
-                    actual_model, messages, show_tokens
-                )
+                if use_progress_streaming:
+                    return self._handle_streaming_response_with_progress(
+                        actual_model, messages, show_tokens
+                    )
+                else:
+                    return self._handle_streaming_response(
+                        actual_model, messages, show_tokens
+                    )
             else:
                 return self._handle_normal_response(actual_model, messages, show_tokens)
 

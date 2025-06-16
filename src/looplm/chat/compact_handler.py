@@ -259,17 +259,66 @@ class CompactHandler:
             if not response.choices or not response.choices[0].message:
                 raise CompactError("Empty response from LLM")
 
-            summary = response.choices[0].message.content
+            raw_summary = response.choices[0].message.content
 
-            if not summary or summary.strip() == "":
+            if not raw_summary or raw_summary.strip() == "":
                 raise CompactError("LLM returned empty summary")
 
-            return summary.strip()
+            # Try to extract content between <summary> tags
+            parsed_summary = self._extract_summary_content(raw_summary)
+
+            return parsed_summary
 
         except Exception as e:
             if "CompactError" in str(type(e)):
                 raise
             raise CompactError(f"LLM call failed: {str(e)}")
+
+    def _extract_summary_content(self, raw_response: str) -> str:
+        """Extract summary content from LLM response
+
+        Args:
+            raw_response: Raw response from LLM
+
+        Returns:
+            Extracted summary content
+        """
+        import re
+
+        # Try to find content between <summary> tags (case insensitive)
+        summary_match = re.search(
+            r"<summary>\s*(.*?)\s*</summary>", raw_response, re.DOTALL | re.IGNORECASE
+        )
+
+        if summary_match:
+            extracted_content = summary_match.group(1).strip()
+            if extracted_content:
+                logger.info("Successfully extracted summary from structured response")
+                return extracted_content
+            else:
+                logger.warning("Found summary tags but content was empty")
+        else:
+            logger.info("No summary tags found, using full response as fallback")
+
+        # Fallback: use the entire response but clean it up
+        cleaned_response = raw_response.strip()
+
+        # Remove any analysis sections that might be at the beginning
+        analysis_pattern = r"<analysis>.*?</analysis>\s*"
+        cleaned_response = re.sub(
+            analysis_pattern, "", cleaned_response, flags=re.DOTALL | re.IGNORECASE
+        )
+
+        # If we still have summary tags visible in the output, warn about it
+        if (
+            "<summary>" in cleaned_response.lower()
+            or "</summary>" in cleaned_response.lower()
+        ):
+            logger.warning(
+                "Summary tags are visible in output - LLM may not have followed instructions properly"
+            )
+
+        return cleaned_response.strip()
 
     def reset_compact(self, session: ChatSession) -> bool:
         """Reset compact state for a session

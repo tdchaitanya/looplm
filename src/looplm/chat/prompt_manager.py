@@ -16,7 +16,7 @@ from looplm.commands import CommandManager
 
 
 class CommandCompleter(Completer):
-    """Completer for @ commands with context-aware completion"""
+    """Completer for @ commands and chat commands with context-aware completion"""
 
     def __init__(self, base_path: Path = None):
         """Initialize completer with command manager
@@ -26,6 +26,97 @@ class CommandCompleter(Completer):
         """
         # Use the singleton CommandManager instead of creating a new registry
         self.command_manager = CommandManager(base_path=base_path or Path.cwd())
+
+        # Define chat commands with descriptions
+        # Format: "primary_command": {"aliases": ["alias1", "alias2"], "description": "..."}
+        self.chat_commands = {
+            # Basic commands
+            "quit": {"aliases": ["q"], "description": "Exit chat session"},
+            "help": {"aliases": ["h"], "description": "Show this help message"},
+            "clear": {"aliases": ["c"], "description": "Clear chat history"},
+            "clear-last": {
+                "aliases": [],
+                "description": "Clear last N messages (default: 1)",
+            },
+            # Session management
+            "save": {"aliases": [], "description": "Save current session"},
+            "load": {"aliases": [], "description": "Load a saved session"},
+            "new": {"aliases": [], "description": "Start a new session"},
+            "list": {"aliases": [], "description": "List saved sessions"},
+            "delete": {"aliases": [], "description": "Delete a session"},
+            "rename": {"aliases": [], "description": "Rename current session"},
+            # Configuration
+            "model": {"aliases": [], "description": "Change model"},
+            "system": {"aliases": [], "description": "View/update system prompt"},
+            "usage": {"aliases": [], "description": "View token usage"},
+            "compact": {
+                "aliases": [],
+                "description": "Summarize and compact conversation so far (reduces context/cost)",
+            },
+            "compact-info": {
+                "aliases": [],
+                "description": "Show compact status and statistics",
+            },
+            "compact-reset": {
+                "aliases": [],
+                "description": "Reset compact state and use full history",
+            },
+        }
+
+        # Create a flat mapping for quick lookup (includes both primary commands and aliases)
+        self.command_lookup = {}
+        for primary, data in self.chat_commands.items():
+            self.command_lookup[primary] = primary
+            for alias in data["aliases"]:
+                self.command_lookup[alias] = primary
+
+    def _get_chat_command_completions(self, text_after_slash: str):
+        """Get completions for chat commands starting with /
+
+        Args:
+            text_after_slash: Text after the / symbol
+
+        Returns:
+            Generator of completions
+        """
+        # Track which primary commands we've already shown to avoid duplicates
+        shown_commands = set()
+
+        for cmd_or_alias in self.command_lookup.keys():
+            if cmd_or_alias.startswith(text_after_slash.lower()):
+                primary_cmd = self.command_lookup[cmd_or_alias]
+
+                # Skip if we've already shown this primary command
+                if primary_cmd in shown_commands:
+                    continue
+
+                shown_commands.add(primary_cmd)
+                cmd_data = self.chat_commands[primary_cmd]
+
+                # Format the command display with aliases
+                if cmd_data["aliases"]:
+                    aliases_str = "/" + ", /".join(cmd_data["aliases"])
+                    command_display = f"{primary_cmd} ({aliases_str})"
+                else:
+                    command_display = primary_cmd
+
+                # Create a completion with command, aliases, and description
+                display_text = (
+                    f"\033[1;90m/{command_display}\033[0m - {cmd_data['description']}"
+                )
+
+                # The completion text should be the specific command/alias that was typed
+                completion_text = (
+                    cmd_or_alias
+                    if cmd_or_alias.startswith(text_after_slash.lower())
+                    else primary_cmd
+                )
+
+                yield Completion(
+                    completion_text,
+                    start_position=-len(text_after_slash),
+                    display=ANSI(display_text),
+                )
 
     def get_completions(self, document, complete_event):
         """Get completions for current input
@@ -38,6 +129,20 @@ class CommandCompleter(Completer):
             Generator of completions
         """
         text = document.text_before_cursor
+
+        # Check for chat commands starting with /
+        slash_pos = text.rfind("/")
+        if slash_pos != -1:
+            # Check if this is a chat command (not part of a path)
+            text_before_slash = text[:slash_pos]
+            # If the slash is at the beginning or after whitespace, treat as command
+            if slash_pos == 0 or text_before_slash[-1].isspace():
+                text_after_slash = text[slash_pos + 1 :]
+                # Only provide completions if we don't have spaces after the slash
+                # (to avoid interfering with command arguments)
+                if " " not in text_after_slash:
+                    yield from self._get_chat_command_completions(text_after_slash)
+                    return
 
         # Find any @ symbol before cursor
         at_pos = text.rfind("@")
@@ -82,13 +187,30 @@ class CommandCompleter(Completer):
                         yield Completion(completion_tuple, start_position=start_pos)
 
         else:
-            # Get completions from the registry's get_completions method
+            # Get @ command completions with descriptions
             completions = self.command_manager.registry.get_completions(after_at)
             for completion in completions:
-                yield Completion(
-                    completion,
-                    start_position=-len(after_at),
-                )
+                # Get the command name (remove @ if present)
+                cmd_name = completion.replace("@", "")
+
+                # Get the processor to access its description
+                processor = self.command_manager.get_processor(cmd_name)
+                if processor:
+                    # Format with description
+                    display_text = (
+                        f"\033[1;90m{completion}\033[0m - {processor.description}"
+                    )
+                    yield Completion(
+                        completion,
+                        start_position=-len(after_at),
+                        display=ANSI(display_text),
+                    )
+                else:
+                    # Fallback to just the command name if processor not found
+                    yield Completion(
+                        completion,
+                        start_position=-len(after_at),
+                    )
 
 
 class PromptManager:
@@ -141,7 +263,7 @@ class PromptManager:
 
         @kb.add("/")
         def _(event):
-            """Auto-trigger completion after slash in paths"""
+            """Auto-trigger completion after slash (for paths and commands)"""
             event.current_buffer.insert_text("/")
             event.current_buffer.start_completion()
 
@@ -186,8 +308,12 @@ class PromptManager:
 
     def create_prompt_fragments(self, prompt_str: str):
         """Create styled prompt fragments"""
+        # Extract just the timestamp part (everything before the first space)
+        parts = prompt_str.split(" ", 1)
+        timestamp = parts[0] if parts else ""
+
         return [
-            ("class:timestamp", prompt_str[:5]),  # timestamp
+            ("class:timestamp", timestamp),  # timestamp
             ("", " "),
             ("class:prompt", "User ► "),
         ]
