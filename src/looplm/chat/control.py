@@ -22,6 +22,8 @@ class CommandHandler:
         provider: Optional[str] = None,
         model: Optional[str] = None,
         debug: bool = False,
+        tools: Optional[str] = None,
+        tools_approval: bool = False,
     ):
         """Initialize command handler"""
         self.console = ChatConsole()
@@ -32,6 +34,8 @@ class CommandHandler:
         self.override_provider = provider
         self.override_model = model
         self.debug = debug
+        self.tools_config = tools
+        self.tools_approval = tools_approval
 
     def handle_command(self, cmd: str) -> bool:
         """
@@ -84,6 +88,28 @@ class CommandHandler:
             return self._handle_compact_info()
         elif cmd == "compact-reset":
             return self._handle_compact_reset()
+
+        # Tool commands
+        elif cmd == "tools":
+            return self._handle_tools()
+        elif cmd == "tools-list":
+            return self._handle_tools_list()
+        elif cmd.startswith("tools-enable"):
+            parts = cmd.split(" ", 1)
+            tool_names = parts[1] if len(parts) > 1 else "all"
+            return self._handle_tools_enable(tool_names)
+        elif cmd == "tools-disable":
+            return self._handle_tools_disable()
+        elif cmd == "tools-approval":
+            return self._handle_tools_approval()
+        elif cmd.startswith("tools-create"):
+            parts = cmd.split(" ", 1)
+            args = parts[1] if len(parts) > 1 else ""
+            return self._handle_tools_create(args)
+        elif cmd == "tools-dir":
+            return self._handle_tools_dir()
+        elif cmd == "tools-reload":
+            return self._handle_tools_reload()
         else:
             self.console.display_error(f"Unknown command: {cmd}")
             return True
@@ -727,6 +753,16 @@ class CommandHandler:
             provider_name, model_name = self.get_provider_display_info(session)
             self.console.display_provider_info(provider_name, model_name)
 
+        # Enable tools if specified in initialization
+        if self.tools_config:
+            if self.tools_config.lower() == "all":
+                session.enable_tools(require_approval=self.tools_approval)
+            else:
+                tool_list = [name.strip() for name in self.tools_config.split(",")]
+                session.enable_tools(
+                    tool_names=tool_list, require_approval=self.tools_approval
+                )
+
         return session
 
     def _get_provider_config(self, provider: ProviderType) -> dict:
@@ -735,3 +771,163 @@ class CommandHandler:
         if provider not in providers:
             raise ValueError(f"Provider {provider.value} is not configured")
         return providers[provider]
+
+    def _handle_tools(self) -> bool:
+        """Handle /tools command to show tool status"""
+        self.console.display_info("\n🔧 Tool Commands:")
+        commands = [
+            ("/tools-list", "List available tools"),
+            ("/tools-enable [tool1,tool2]", "Enable tools (all if no names given)"),
+            ("/tools-disable", "Disable all tools"),
+            ("/tools-approval", "Toggle approval mode for tool execution"),
+            ("/tools-create <name>", "Create a new custom tool template"),
+            ("/tools-dir", "Show user tools directory path"),
+            ("/tools-reload", "Reload tools from directories"),
+        ]
+
+        for cmd, desc in commands:
+            self.console.console.print(f"  {cmd:<25} - {desc}", style="dim")
+
+        return True
+
+    def _handle_tools_create(self, args: str) -> bool:
+        """Handle /tools-create command to create a new custom tool"""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        if not args.strip():
+            self.console.display_error("Usage: /tools-create <tool_name> [description]")
+            return True
+
+        parts = args.strip().split(maxsplit=1)
+        tool_name = parts[0]
+        description = parts[1] if len(parts) > 1 else f"Custom tool: {tool_name}"
+
+        # Validate tool name
+        if not tool_name.isidentifier():
+            self.console.display_error("Tool name must be a valid Python identifier")
+            return True
+
+        session = self.session_manager.active_session
+        if not session.tool_manager:
+            self.console.display_error(
+                "Tools are not enabled. Use /tools-enable first."
+            )
+            return True
+
+        success = session.tool_manager.create_sample_tool(tool_name, description)
+        if success:
+            self.console.display_info(
+                "Use /tools-reload to load the new tool after editing it."
+            )
+
+        return True
+
+    def _handle_tools_dir(self) -> bool:
+        """Handle /tools-dir command to show user tools directory"""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        session = self.session_manager.active_session
+        if not session.tool_manager:
+            self.console.display_error("Tools are not enabled")
+            return True
+
+        tools_dir = session.tool_manager.get_user_tools_directory_path()
+        self.console.display_info(f"User tools directory: {tools_dir}")
+        self.console.console.print(
+            "Place your custom .py files with @tool decorated functions in this directory.",
+            style="dim",
+        )
+        return True
+
+    def _handle_tools_reload(self) -> bool:
+        """Handle /tools-reload command to reload tools from directories"""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        session = self.session_manager.active_session
+        if not session.tool_manager:
+            self.console.display_error("Tools are not enabled")
+            return True
+
+        # Clear existing tools and reload
+        session.tool_manager.registry.clear()
+        builtin_count = len(session.tool_manager.discover_default_tools())
+        user_count = len(session.tool_manager.discover_user_tools())
+
+        total = builtin_count + user_count
+        self.console.display_info(
+            f"🔄 Reloaded {total} tools ({builtin_count} built-in, {user_count} user-defined)"
+        )
+        return True
+
+    def _handle_tools_list(self) -> bool:
+        """Handle /tools-list command"""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        session = self.session_manager.active_session
+        available_tools = session.list_available_tools()
+        enabled_tools = session.list_enabled_tools()
+
+        if not available_tools:
+            self.console.display_info(
+                "No tools discovered. Tools are auto-discovered from src/looplm/tools/builtin/"
+            )
+        else:
+            self.console.display_info(f"Available tools ({len(available_tools)}):")
+            for tool_name in available_tools:
+                status = "✅ enabled" if tool_name in enabled_tools else "⭕ available"
+                self.console.console.print(f"  🔧 {tool_name} - {status}", style="cyan")
+
+        return True
+
+    def _handle_tools_enable(self, tool_names: str = "all") -> bool:
+        """Handle /tools-enable command"""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        session = self.session_manager.active_session
+
+        if tool_names == "all":
+            session.enable_tools(require_approval=self.tools_approval)
+        else:
+            tool_list = [name.strip() for name in tool_names.split(",")]
+            session.enable_tools(
+                tool_names=tool_list, require_approval=self.tools_approval
+            )
+
+        return True
+
+    def _handle_tools_disable(self) -> bool:
+        """Handle /tools-disable command"""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        session = self.session_manager.active_session
+        session.disable_tools()
+        return True
+
+    def _handle_tools_approval(self) -> bool:
+        """Handle /tools-approval command"""
+        if not self.session_manager.active_session:
+            self.console.display_error("No active session")
+            return True
+
+        session = self.session_manager.active_session
+        if session.tool_manager:
+            current_mode = session.tool_manager.require_approval
+            session.tool_manager.set_approval_mode(not current_mode)
+            new_mode = "enabled" if not current_mode else "disabled"
+            self.console.display_success(f"Tool approval mode {new_mode}")
+        else:
+            self.console.display_error("Tools are not enabled in this session")
+
+        return True

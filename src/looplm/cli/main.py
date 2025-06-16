@@ -65,6 +65,15 @@ def process_input(args: tuple, piped_input: str = "") -> str:
     default="rich",
     help="Choose the chat interface: 'rich' for traditional console or 'textual' for full-page TUI",
 )
+@click.option(
+    "--tools",
+    help="Enable tools (comma-separated list of tool names, or 'all' for all tools)",
+)
+@click.option(
+    "--tools-approval",
+    is_flag=True,
+    help="Require human approval before executing tools",
+)
 def cli(
     prompt,
     provider,
@@ -76,6 +85,8 @@ def cli(
     status,
     debug,
     ui,
+    tools,
+    tools_approval,
 ):
     """looplm - LLMs on the command line"""
     config_manager = ConfigManager()
@@ -92,10 +103,22 @@ def cli(
                 # Use the new Textual interface
                 from ..chat.textual_ui import run_textual_chat
 
-                run_textual_chat(provider=provider, model=model, debug=debug)
+                run_textual_chat(
+                    provider=provider,
+                    model=model,
+                    debug=debug,
+                    tools=tools,
+                    tools_approval=tools_approval,
+                )
             else:
                 # Use the traditional Rich interface
-                handler = CommandHandler(provider=provider, model=model, debug=debug)
+                handler = CommandHandler(
+                    provider=provider,
+                    model=model,
+                    debug=debug,
+                    tools=tools,
+                    tools_approval=tools_approval,
+                )
                 handler.start_session()
 
                 if prompt:
@@ -258,6 +281,17 @@ def cli(
                     provider = "other"  # Use the internal provider type
 
             handler = ConversationHandler(console, debug=debug)
+
+            # Enable tools if specified
+            if tools:
+                if tools.lower() == "all":
+                    handler.enable_tools(require_approval=tools_approval)
+                else:
+                    tool_list = [name.strip() for name in tools.split(",")]
+                    handler.enable_tools(
+                        tool_names=tool_list, require_approval=tools_approval
+                    )
+
             handler.handle_prompt(prompt_text, provider=provider, model=model)
         except Exception as e:
             from rich.markup import escape

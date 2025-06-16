@@ -674,8 +674,18 @@ class LoopLMChat(App):
                 else:
                     actual_model = self.current_session.model
 
-        # Get messages for API
-        messages = self.current_session.get_messages_for_api()
+        # Check if tools are available
+        tools_available = (
+            self.current_session.tool_manager
+            and hasattr(self.current_session.tool_manager, "get_tool_schemas")
+            and self.current_session.tool_manager.get_tool_schemas()
+        )
+
+        # Get messages for API - use tool-aware version if tools are enabled
+        if tools_available:
+            messages = self.current_session.get_messages_for_api_with_tools()
+        else:
+            messages = self.current_session.get_messages_for_api()
 
         # Handle vision if needed
         if image_metadata:

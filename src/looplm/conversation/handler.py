@@ -1,7 +1,7 @@
 # src/looplm/conversation/handler.py
 import os
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from litellm import completion
 from litellm.utils import trim_messages
@@ -14,6 +14,7 @@ from rich.text import Text
 from ..commands import CommandManager
 from ..config.manager import ConfigManager
 from ..config.providers import ProviderType
+from ..tools import ToolManager
 
 
 class ConversationHandler:
@@ -32,6 +33,50 @@ class ConversationHandler:
         # Use command manager instead of file preprocessor
         self.command_manager = CommandManager(base_path=Path.cwd())
         self.debug = debug
+
+        # Initialize tool manager (disabled by default)
+        self.tool_manager = None
+
+    def enable_tools(
+        self, tool_names: Optional[List[str]] = None, require_approval: bool = False
+    ) -> None:
+        """Enable tool calling functionality.
+
+        Args:
+            tool_names: List of specific tools to enable (None = all available)
+            require_approval: Whether to require human approval for tool execution
+        """
+        self.tool_manager = ToolManager(
+            console=self.console, require_approval=require_approval
+        )
+
+        if tool_names:
+            loaded = self.tool_manager.load_tools_from_names(tool_names)
+            if loaded:
+                self.console.print(
+                    f"🔧 Enabled tools: {', '.join(loaded)}", style="blue"
+                )
+        else:
+            # Load all available tools
+            available = self.tool_manager.registry.list_tools()
+            if available:
+                self.console.print(
+                    f"🔧 Enabled {len(available)} tools: {', '.join(available)}",
+                    style="blue",
+                )
+
+    def disable_tools(self) -> None:
+        """Disable tool calling functionality."""
+        self.tool_manager = None
+        self.console.print("🔧 Tools disabled", style="dim")
+
+    def list_available_tools(self) -> None:
+        """Display available tools."""
+        if not self.tool_manager:
+            self.console.print("Tools are not enabled", style="yellow")
+            return
+
+        self.tool_manager.display_available_tools()
 
     def _get_provider_config(self, provider: ProviderType) -> dict:
         """Get full provider configuration including custom name if it's OTHER type"""
@@ -176,7 +221,7 @@ class ConversationHandler:
         Handle a user prompt and stream the response.
 
         The prompt may contain commands (@file, @folder, @github, @image) which will be processed before sending
-        to the LLM provider.
+        to the LLM provider. If tools are enabled, the LLM may also call tools.
 
         Args:
             prompt: User prompt, possibly containing commands
@@ -206,7 +251,6 @@ class ConversationHandler:
             self._setup_environment(provider_type)
 
             # Prepare actual model name
-            # IMPORTANT FIX: Check if the model name already contains the provider prefix
             if provider_type == ProviderType.OTHER and custom_provider:
                 # For custom providers
                 if not model_name.startswith(f"{custom_provider}/"):
@@ -231,17 +275,28 @@ class ConversationHandler:
                         # For most providers like OpenAI, Anthropic, Groq, etc. don't add prefix
                         actual_model = model_name
 
-            # Check if the model supports vision
+            # Check if the model supports vision and function calling
             try:
                 import litellm
 
                 model_supports_vision = litellm.supports_vision(model=actual_model)
+                model_supports_tools = litellm.supports_function_calling(
+                    model=actual_model
+                )
             except Exception:
-                # If we can't import litellm or check, assume model doesn't support vision
+                # If we can't import litellm or check, assume model doesn't support these features
                 model_supports_vision = False
+                model_supports_tools = False
                 self.console.print(
-                    f"\nWarning: Unable to verify if model {actual_model} supports vision. Proceeding with text-only input.",
+                    f"\nWarning: Unable to verify model capabilities for {actual_model}. Proceeding with basic functionality.",
                     style="bold yellow",
+                )
+
+            # Check tool compatibility
+            if self.tool_manager and not model_supports_tools:
+                self.console.print(
+                    f"\n⚠️ Warning: Model {actual_model} does not support function calling. Tools will be disabled for this request.",
+                    style="yellow",
                 )
 
             # Create messages based on whether we have images
@@ -265,63 +320,190 @@ class ConversationHandler:
                 # Standard text message
                 messages = [{"role": "user", "content": processed_content}]
 
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=self.console,
-                transient=True,
-            ) as progress:
-                # Fun, dynamic messages to improve UX
-                import random
+            # Get tool schemas if tools are enabled and supported
+            tools = None
+            if self.tool_manager and model_supports_tools:
+                tool_schemas = self.tool_manager.get_tool_schemas()
+                if tool_schemas:
+                    tools = tool_schemas
 
-                creative_messages = [
-                    # Thoughtful/Contemplative
-                    f"🤔 Pondering with {model_name}...",
-                    f"🧠 Deep thinking via {model_name}...",
-                    f"💭 Brewing thoughts using {model_name}...",
-                    f"🎯 Crafting response with {model_name}...",
-                    f"🔍 Exploring possibilities with {model_name}...",
-                    # Magical/Mystical
-                    f"🔮 Consulting the AI oracle {model_name}...",
-                    f"✨ Weaving digital magic via {model_name}...",
-                    f"🪄 Conjuring wisdom through {model_name}...",
-                    f"🌟 Channeling cosmic knowledge from {model_name}...",
-                    # Creative/Artistic
-                    f"🎨 Painting words via {model_name}...",
-                    f"🎭 Performing linguistic theatre with {model_name}...",
-                    f"🎼 Composing a response using {model_name}...",
-                    f"📝 Scribing wisdom through {model_name}...",
-                    # Tech/Action
-                    f"⚡ Sparking neural networks in {model_name}...",
-                    f"🚀 Launching query to {model_name}...",
-                    f"⚙️ Processing magic through {model_name}...",
-                    f"🔥 Igniting synapses in {model_name}...",
-                    # Playful/Fun
-                    f"🤖 Having a chat with {model_name}...",
-                    f"🎪 Putting on a thinking show via {model_name}...",
-                    f"🎲 Rolling the dice of wisdom with {model_name}...",
-                    f"🎈 Floating ideas through {model_name}...",
-                ]
+            # Call the LLM with enhanced handling for tools
+            self._handle_llm_interaction(actual_model, messages, tools, model_name)
 
-                task_description = random.choice(creative_messages)
-                task = progress.add_task(task_description, total=None)
-                accumulated_text = ""
+        except Exception as e:
+            self.console.print(f"Error: {str(e)}", style="bold red")
+            raise
 
-                response = completion(
-                    model=actual_model, messages=trim_messages(messages), stream=True
-                )
+    def _handle_llm_interaction(
+        self,
+        model: str,
+        messages: List[Dict],
+        tools: Optional[List[Dict]] = None,
+        display_model_name: str = None,
+    ) -> None:
+        """Handle the LLM interaction with potential tool calls."""
+        display_name = display_model_name or model
 
-                for chunk in response:
-                    content = chunk.choices[0].delta.content or ""
-                    accumulated_text += content
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=self.console,
+            transient=True,
+        ) as progress:
+            # Fun, dynamic messages to improve UX
+            import random
 
-            # Display the complete response at once using Markdown
+            creative_messages = [
+                # Thoughtful/Contemplative
+                f"🤔 Pondering with {display_name}...",
+                f"🧠 Deep thinking via {display_name}...",
+                f"💭 Brewing thoughts using {display_name}...",
+                f"🎯 Crafting response with {display_name}...",
+                f"🔍 Exploring possibilities with {display_name}...",
+                # Magical/Mystical
+                f"🔮 Consulting the AI oracle {display_name}...",
+                f"✨ Weaving digital magic via {display_name}...",
+                f"🪄 Conjuring wisdom through {display_name}...",
+                f"🌟 Channeling cosmic knowledge from {display_name}...",
+                # Creative/Artistic
+                f"🎨 Painting words via {display_name}...",
+                f"🎭 Performing linguistic theatre with {display_name}...",
+                f"🎼 Composing a response using {display_name}...",
+                f"📝 Scribing wisdom through {display_name}...",
+                # Tech/Action
+                f"⚡ Sparking neural networks in {display_name}...",
+                f"🚀 Launching query to {display_name}...",
+                f"⚙️ Processing magic through {display_name}...",
+                f"🔥 Igniting synapses in {display_name}...",
+                # Playful/Fun
+                f"🤖 Having a chat with {display_name}...",
+                f"🎪 Putting on a thinking show via {display_name}...",
+                f"🎲 Rolling the dice of wisdom with {display_name}...",
+                f"🎈 Floating ideas through {display_name}...",
+            ]
+
+            task_description = random.choice(creative_messages)
+            task = progress.add_task(task_description, total=None)
+
+            # Make the initial API call
+            call_kwargs = {
+                "model": model,
+                "messages": trim_messages(messages),
+                "stream": True,
+            }
+
+            if tools:
+                call_kwargs["tools"] = tools
+                call_kwargs["tool_choice"] = "auto"
+
+            response = completion(**call_kwargs)
+            accumulated_text = ""
+            tool_calls = []
+
+            for chunk in response:
+                delta = chunk.choices[0].delta
+
+                # Handle text content
+                if delta.content:
+                    accumulated_text += delta.content
+
+                # Handle tool calls
+                if hasattr(delta, "tool_calls") and delta.tool_calls:
+                    for tool_call in delta.tool_calls:
+                        # Extend tool_calls list if needed
+                        while len(tool_calls) <= tool_call.index:
+                            tool_calls.append(
+                                {
+                                    "id": "",
+                                    "type": "function",
+                                    "function": {"name": "", "arguments": ""},
+                                }
+                            )
+
+                        # Update the tool call
+                        if tool_call.id:
+                            tool_calls[tool_call.index]["id"] = tool_call.id
+                        if tool_call.function.name:
+                            tool_calls[tool_call.index]["function"][
+                                "name"
+                            ] = tool_call.function.name
+                        if tool_call.function.arguments:
+                            tool_calls[tool_call.index]["function"][
+                                "arguments"
+                            ] += tool_call.function.arguments
+
+        # Display the text response if any
+        if accumulated_text.strip():
             try:
                 markdown = Markdown(accumulated_text, code_theme="monokai")
                 self.console.print(markdown)
             except Exception:
                 self.console.print(accumulated_text)
 
-        except Exception as e:
-            self.console.print(f"Error: {str(e)}", style="bold red")
-            raise
+        # Handle tool calls if any
+        if tool_calls and self.tool_manager:
+            self._handle_tool_calls(
+                model, messages, tool_calls, tools, accumulated_text
+            )
+
+    def _handle_tool_calls(
+        self,
+        model: str,
+        original_messages: List[Dict],
+        tool_calls: List[Dict],
+        tools: List[Dict],
+        assistant_message: str,
+    ) -> None:
+        """Handle tool calls and get the final response."""
+        # Add the assistant's message with tool calls to the conversation
+        assistant_msg = {
+            "role": "assistant",
+            "content": assistant_message or None,
+            "tool_calls": tool_calls,
+        }
+        messages = original_messages + [assistant_msg]
+
+        # Execute each tool call
+        for tool_call in tool_calls:
+            if tool_call.get("function"):
+                tool_call_id = tool_call["id"]
+                function_name = tool_call["function"]["name"]
+                arguments = tool_call["function"]["arguments"]
+
+                # Execute the tool
+                _, result = self.tool_manager.execute_tool_call(
+                    tool_call_id, function_name, arguments
+                )
+
+                # Add tool result to messages (following LiteLLM format)
+                messages.append(
+                    {
+                        "tool_call_id": tool_call_id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": result,
+                    }
+                )
+
+        # Get the final response from the model
+        self.console.print("\n" + "─" * 50)
+        self.console.print(
+            "🤖 Getting final response from assistant...", style="dim blue"
+        )
+
+        final_response = completion(
+            model=model, messages=trim_messages(messages), stream=True
+        )
+
+        final_text = ""
+        for chunk in final_response:
+            content = chunk.choices[0].delta.content or ""
+            final_text += content
+
+        # Display the final response
+        if final_text.strip():
+            try:
+                markdown = Markdown(final_text, code_theme="monokai")
+                self.console.print(markdown)
+            except Exception:
+                self.console.print(final_text)
