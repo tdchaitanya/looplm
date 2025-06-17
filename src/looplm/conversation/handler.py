@@ -230,7 +230,7 @@ class ConversationHandler:
         """
         try:
             # Process the prompt using the command manager
-            processed_content, image_metadata = self.command_manager.process_text_sync(
+            processed_content, media_metadata = self.command_manager.process_text_sync(
                 prompt
             )
 
@@ -238,10 +238,10 @@ class ConversationHandler:
                 # In debug mode, just display the processed content
                 self.console.print("\nProcessed Content:", style="bold blue")
                 self.console.print(processed_content)
-                if image_metadata:
-                    self.console.print("\nImage Metadata:", style="bold magenta")
-                    for img in image_metadata:
-                        self.console.print(img)
+                if media_metadata:
+                    self.console.print("\nMedia Metadata:", style="bold magenta")
+                    for media in media_metadata:
+                        self.console.print(media)
                 return  # Exit early in debug mode
 
             provider_type, model_name, custom_provider = self._get_provider_and_model(
@@ -275,17 +275,20 @@ class ConversationHandler:
                         # For most providers like OpenAI, Anthropic, Groq, etc. don't add prefix
                         actual_model = model_name
 
-            # Check if the model supports vision and function calling
+            # Check if the model supports vision, PDF input, and function calling
             try:
                 import litellm
+                from litellm.utils import supports_pdf_input
 
                 model_supports_vision = litellm.supports_vision(model=actual_model)
+                model_supports_pdf = supports_pdf_input(model=actual_model)
                 model_supports_tools = litellm.supports_function_calling(
                     model=actual_model
                 )
             except Exception:
                 # If we can't import litellm or check, assume model doesn't support these features
                 model_supports_vision = False
+                model_supports_pdf = False
                 model_supports_tools = False
                 self.console.print(
                     f"\nWarning: Unable to verify model capabilities for {actual_model}. Proceeding with basic functionality.",
@@ -299,25 +302,43 @@ class ConversationHandler:
                     style="yellow",
                 )
 
-            # Create messages based on whether we have images
-            if image_metadata and model_supports_vision:
-                # Create content as an array with text and images
-                content_list = [{"type": "text", "text": processed_content}]
+            # Separate media by type
+            images = []
+            pdfs = []
+            if media_metadata:
+                for media in media_metadata:
+                    if media.get("type") == "image_url":
+                        images.append(media)
+                    elif media.get("type") == "file_url":
+                        pdfs.append(media)
 
-                # Add each image
-                for img in image_metadata:
-                    content_list.append(img)
+            # Create messages based on what media we have and what the model supports
+            content_list = [{"type": "text", "text": processed_content}]
 
-                messages = [{"role": "user", "content": content_list}]
-            elif image_metadata and not model_supports_vision:
-                # Warn that the model doesn't support images
+            # Handle images
+            if images and model_supports_vision:
+                content_list.extend(images)
+            elif images and not model_supports_vision:
                 self.console.print(
                     f"\nWarning: Model {actual_model} does not support vision input. Images will be ignored.",
                     style="bold yellow",
                 )
-                messages = [{"role": "user", "content": processed_content}]
+
+            # Handle PDFs
+            if pdfs and model_supports_pdf:
+                content_list.extend([pdf["file_data"] for pdf in pdfs])
+            elif pdfs and not model_supports_pdf:
+                self.console.print(
+                    f"\nWarning: Model {actual_model} does not support PDF input. PDFs will be ignored.",
+                    style="bold yellow",
+                )
+
+            # Create the final message
+            if len(content_list) > 1:
+                # We have media content
+                messages = [{"role": "user", "content": content_list}]
             else:
-                # Standard text message
+                # Standard text message only
                 messages = [{"role": "user", "content": processed_content}]
 
             # Get tool schemas if tools are enabled and supported

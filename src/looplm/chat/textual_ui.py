@@ -634,7 +634,7 @@ class LoopLMChat(App):
         # Process commands in the message
         command_manager = CommandManager(base_path=self.current_session.base_path)
         processed_result = await command_manager.process_text(message)
-        processed_content, image_metadata = processed_result
+        processed_content, media_metadata = processed_result
 
         # Load environment and prepare for API call
         self.current_session.config_manager.load_environment(
@@ -687,17 +687,30 @@ class LoopLMChat(App):
         else:
             messages = self.current_session.get_messages_for_api()
 
-        # Handle vision if needed
-        if image_metadata:
+        # Handle media (images and PDFs) if needed
+        if media_metadata:
             try:
                 import litellm
+                from litellm.utils import supports_pdf_input
 
                 model_supports_vision = litellm.supports_vision(model=actual_model)
-                if model_supports_vision and messages:
+                model_supports_pdf = supports_pdf_input(model=actual_model)
+
+                if (model_supports_vision or model_supports_pdf) and messages:
                     last_message = messages[-1]
                     if last_message["role"] == "user":
                         content_list = [{"type": "text", "text": processed_content}]
-                        content_list.extend(image_metadata)
+
+                        # Separate media by type and add if supported
+                        for media in media_metadata:
+                            if (
+                                media.get("type") == "image_url"
+                                and model_supports_vision
+                            ):
+                                content_list.append(media)
+                            elif media.get("type") == "file_url" and model_supports_pdf:
+                                content_list.append(media["file_data"])
+
                         last_message["content"] = content_list
             except Exception:
                 pass

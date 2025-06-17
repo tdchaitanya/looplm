@@ -134,12 +134,12 @@ class CommandRegistry:
             text: Input text containing commands
 
         Returns:
-            Tuple of (processed_text, list_of_image_metadata)
+            Tuple of (processed_text, list_of_media_metadata)
                 - processed_text: Text with commands output appended
-                - list_of_image_metadata: List of image metadata for vision models
+                - list_of_media_metadata: List of media metadata for vision/document models
         """
         processed_outputs = []
-        image_metadata = []
+        media_metadata = []
         error_messages = []
 
         modified_text = text
@@ -185,8 +185,8 @@ class CommandRegistry:
                 error_messages.append(f"@{command} error: {processed.error}")
             else:
                 processed_outputs.append(processed.content)
-                if command == "image" and processed.metadata:
-                    image_metadata.append(processed.metadata)
+                if command in ["image", "pdf"] and processed.metadata:
+                    media_metadata.append(processed.metadata)
 
                 # Replace command with modified text
                 full_match = text[match.start() : match.end()]
@@ -205,4 +205,4 @@ class CommandRegistry:
         if processed_outputs:
             result += "\n\n" + "\n".join(processed_outputs)
 
-        return result, image_metadata
+        return result, media_metadata

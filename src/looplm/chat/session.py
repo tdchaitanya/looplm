@@ -107,59 +107,83 @@ class Message:
         )
 
 
- # Enhanced creative messages
-def get_creative_message(model_name, token_display, has_images=False):
-    if has_images:
+# Enhanced creative messages
+def get_creative_message(model_name, token_display, has_images=False, has_pdfs=False):
+    if has_images and has_pdfs:
+        # Mixed media - images and PDFs
         creative_messages = [
-            f"🖼️ Analyzing visuals with {model_name}{token_display}...",                                                   
-            f"👁️ Looking at images through {model_name}{token_display}...",                                                
+            f"📄🖼️ Analyzing documents and visuals with {model_name}{token_display}...",
+            f"📊👁️ Processing PDFs and images via {model_name}{token_display}...",
+            f"🔍📋 Examining multimedia content with {model_name}{token_display}...",
+            f"📑🎨 Reading documents and visuals through {model_name}{token_display}...",
+            f"🗃️📸 Analyzing files and images with {model_name}{token_display}...",
+            f"📖🌅 Processing text and visual content via {model_name}{token_display}...",
+        ]
+    elif has_pdfs:
+        # PDF-focused messages
+        creative_messages = [
+            f"📄 Analyzing documents with {model_name}{token_display}...",
+            f"📑 Reading PDF content via {model_name}{token_display}...",
+            f"📋 Processing document text with {model_name}{token_display}...",
+            f"📖 Examining PDF files through {model_name}{token_display}...",
+            f"🗃️ Document analysis in progress with {model_name}{token_display}...",
+            f"📊 Parsing the document content via {model_name}{token_display}...",
+            f"📝 Digesting document information with {model_name}{token_display}...",
+            f"🔍 Reviewing PDF content through {model_name}{token_display}...",
+        ]
+    elif has_images:
+        # Image-focused messages
+        creative_messages = [
+            f"🖼️ Analyzing visuals with {model_name}{token_display}...",
+            f"👁️ Looking at images through {model_name}{token_display}...",
             f"🎨 Processing visual content via {model_name}{token_display}...",
             f"📸 Examining images with {model_name}{token_display}...",
             f"🔍 Visual analysis in progress with {model_name}{token_display}...",
             f"🌅 Reading pixels and text via {model_name}{token_display}...",
             f"🎭 Interpreting visual stories with {model_name}{token_display}...",
-            f"🖼️ Decoding images and text through {model_name}{token_display}...",                                         
+            f"🖼️ Decoding images and text through {model_name}{token_display}...",
         ]
     else:
         creative_messages = [
-                # Thoughtful/Contemplative
-                f"🤔 Pondering with {model_name}{token_display}...",
-                f"🧠 Deep thinking via {model_name}{token_display}...",
-                f"💭 Brewing thoughts using {model_name}{token_display}...",
-                f"🎯 Crafting response with {model_name}{token_display}...",
-                f"🔍 Exploring possibilities with {model_name}{token_display}...",
-                f"🔮 Consulting the AI oracle {model_name}{token_display}...",
-                f"✨ Weaving digital magic via {model_name}{token_display}...",
-                f"🪄 Conjuring wisdom through {model_name}{token_display}...",
-                f"🌟 Channeling cosmic knowledge from {model_name}{token_display}...",
-                f"🎨 Painting words via {model_name}{token_display}...",
-                f"🎭 Performing linguistic theatre with {model_name}{token_display}...",
-                f"🎼 Composing a response using {model_name}{token_display}...",
-                f"📝 Scribing wisdom through {model_name}{token_display}...",
-                f"⚡ Sparking neural networks in {model_name}{token_display}...",
-                f"🚀 Launching query to {model_name}{token_display}...",
-                f"⚙️ Processing magic through {model_name}{token_display}...",
-                f"🔥 Igniting synapses in {model_name}{token_display}...",
-                f"🤖 Having a chat with {model_name}{token_display}...",
-                f"🎪 Putting on a thinking show via {model_name}{token_display}...",
-                f"🎲 Rolling the dice of wisdom with {model_name}{token_display}...",
-                f"🎈 Floating ideas through {model_name}{token_display}...",
-                f"⏳ Traveling through time and tokens with {model_name}{token_display}...",
-                f"🗺️ Mapping out the perfect response via {model_name}{token_display}...",
-                f"🧭 Navigating the knowledge seas with {model_name}{token_display}...",
-                f"👨‍🍳 Cooking up something special with {model_name}{token_display}...",
-                f"🍳 Whisking up wisdom via {model_name}{token_display}...",
-                f"🦋 Letting thoughts bloom via {model_name}{token_display}...",
-                f"🌊 Riding the waves of knowledge with {model_name}{token_display}...",
-            ]
-    
+            # Thoughtful/Contemplative
+            f"🤔 Pondering with {model_name}{token_display}...",
+            f"🧠 Deep thinking via {model_name}{token_display}...",
+            f"💭 Brewing thoughts using {model_name}{token_display}...",
+            f"🎯 Crafting response with {model_name}{token_display}...",
+            f"🔍 Exploring possibilities with {model_name}{token_display}...",
+            f"🔮 Consulting the AI oracle {model_name}{token_display}...",
+            f"✨ Weaving digital magic via {model_name}{token_display}...",
+            f"🪄 Conjuring wisdom through {model_name}{token_display}...",
+            f"🌟 Channeling cosmic knowledge from {model_name}{token_display}...",
+            f"🎨 Painting words via {model_name}{token_display}...",
+            f"🎭 Performing linguistic theatre with {model_name}{token_display}...",
+            f"🎼 Composing a response using {model_name}{token_display}...",
+            f"📝 Scribing wisdom through {model_name}{token_display}...",
+            f"⚡ Sparking neural networks in {model_name}{token_display}...",
+            f"🚀 Launching query to {model_name}{token_display}...",
+            f"⚙️ Processing magic through {model_name}{token_display}...",
+            f"🔥 Igniting synapses in {model_name}{token_display}...",
+            f"🤖 Having a chat with {model_name}{token_display}...",
+            f"🎪 Putting on a thinking show via {model_name}{token_display}...",
+            f"🎲 Rolling the dice of wisdom with {model_name}{token_display}...",
+            f"🎈 Floating ideas through {model_name}{token_display}...",
+            f"⏳ Traveling through time and tokens with {model_name}{token_display}...",
+            f"🗺️ Mapping out the perfect response via {model_name}{token_display}...",
+            f"🧭 Navigating the knowledge seas with {model_name}{token_display}...",
+            f"👨‍🍳 Cooking up something special with {model_name}{token_display}...",
+            f"🍳 Whisking up wisdom via {model_name}{token_display}...",
+            f"🦋 Letting thoughts bloom via {model_name}{token_display}...",
+            f"🌊 Riding the waves of knowledge with {model_name}{token_display}...",
+        ]
+
     return creative_messages
 
 
 def analyze_message_content(messages):
-    """Analyze messages to count text tokens and images"""
+    """Analyze messages to count text tokens, images, and PDFs"""
     text_content = []
     image_count = 0
+    pdf_count = 0
 
     for msg in messages:
         content = msg.get("content")
@@ -169,7 +193,7 @@ def analyze_message_content(messages):
         if isinstance(content, str):
             text_content.append(content)
         elif isinstance(content, list):
-            # Vision content - extract text and count images
+            # Media content - extract text and count images/PDFs
             for item in content:
                 if isinstance(item, dict):
                     if item.get("type") == "text":
@@ -179,6 +203,9 @@ def analyze_message_content(messages):
                             text_content.append(text_value)
                     elif item.get("type") == "image_url":
                         image_count += 1
+                    elif item.get("type") == "file":
+                        # This is a PDF file
+                        pdf_count += 1
 
     # Estimate text tokens
     # Filter out any None values that might have slipped through
@@ -186,7 +213,8 @@ def analyze_message_content(messages):
     all_text = " ".join(text_content)
     estimated_tokens = len(all_text) // 4
 
-    return estimated_tokens, image_count
+    return estimated_tokens, image_count, pdf_count
+
 
 @dataclass
 class ChatSession:
@@ -534,16 +562,16 @@ class ChatSession:
             )
 
             # Unpack the result - now includes processed text and image metadata
-            processed_content, image_metadata = processed_result
+            processed_content, media_metadata = processed_result
 
             if debug:
                 # In debug mode, just display the processed content
                 self.console.print("\nProcessed Content:", style="bold blue")
                 self.console.print(processed_content)
-                if image_metadata:
-                    self.console.print("\nImage Metadata:", style="bold magenta")
-                    for img in image_metadata:
-                        self.console.print(img)
+                if media_metadata:
+                    self.console.print("\nMedia Metadata:", style="bold magenta")
+                    for media in media_metadata:
+                        self.console.print(media)
                 return processed_content
 
             # Only proceed with the LLM if command processing succeeded
@@ -616,28 +644,67 @@ class ChatSession:
             else:
                 messages = self.get_messages_for_api()
 
-            # If we have images and the model supports vision, convert message format
-            if image_metadata and model_supports_vision:
-                # Update the last user message to have content as an array with text and images
+            # Check if model supports PDF input as well
+            try:
+                from litellm.utils import supports_pdf_input
+
+                model_supports_pdf = supports_pdf_input(model=actual_model)
+            except Exception:
+                model_supports_pdf = False
+
+            # Separate media by type
+            images = []
+            pdfs = []
+            if media_metadata:
+                for media in media_metadata:
+                    if media.get("type") == "image_url":
+                        images.append(media)
+                    elif media.get("type") == "file_url":
+                        pdfs.append(media)
+
+            # If we have media and the model supports it, convert message format
+            if (images or pdfs) and (model_supports_vision or model_supports_pdf):
+                # Update the last user message to have content as an array with text and media
                 last_message = messages[-1]
                 if last_message["role"] == "user":
-                    # Create new content list with text and images
-                    # Ensure processed_content is not None
-                    text_content = processed_content if processed_content is not None else ""
+                    # Create new content list with text
+                    text_content = (
+                        processed_content if processed_content is not None else ""
+                    )
                     content_list = [{"type": "text", "text": text_content}]
 
-                    # Add each image
-                    for img in image_metadata:
-                        content_list.append(img)
+                    # Add images if supported
+                    if images and model_supports_vision:
+                        content_list.extend(images)
+                    elif images and not model_supports_vision:
+                        self.console.print(
+                            f"\nWarning: Model {actual_model} does not support vision input. Images will be ignored.",
+                            style="bold yellow",
+                        )
+
+                    # Add PDFs if supported
+                    if pdfs and model_supports_pdf:
+                        content_list.extend([pdf["file_data"] for pdf in pdfs])
+                    elif pdfs and not model_supports_pdf:
+                        self.console.print(
+                            f"\nWarning: Model {actual_model} does not support PDF input. PDFs will be ignored.",
+                            style="bold yellow",
+                        )
 
                     # Replace content with the list
                     last_message["content"] = content_list
-            elif image_metadata and not model_supports_vision:
-                # Warn that the model doesn't support images
-                self.console.print(
-                    f"\nWarning: Model {actual_model} does not support vision input. Images will be ignored.",
-                    style="bold yellow",
-                )
+            elif media_metadata:
+                # We have media but model doesn't support any of it
+                if images and not model_supports_vision:
+                    self.console.print(
+                        f"\nWarning: Model {actual_model} does not support vision input. Images will be ignored.",
+                        style="bold yellow",
+                    )
+                if pdfs and not model_supports_pdf:
+                    self.console.print(
+                        f"\nWarning: Model {actual_model} does not support PDF input. PDFs will be ignored.",
+                        style="bold yellow",
+                    )
 
             # Always use the unified response handler with progress animation
             return self._handle_response_with_progress(
@@ -649,7 +716,7 @@ class ChatSession:
 
             error_message = escape(str(e))
             raise Exception(f"Error sending message: {error_message}")
-        
+
     def _handle_response_with_progress(
         self,
         model: str,
@@ -679,7 +746,7 @@ class ChatSession:
             #     if msg.get("content")
             # ])
             # Create dynamic task description with model info and context
-            estimated_tokens, image_count = analyze_message_content(messages)
+            estimated_tokens, image_count, pdf_count = analyze_message_content(messages)
 
             # Build context display
             context_parts = []
@@ -694,13 +761,23 @@ class ChatSession:
                 else:
                     context_parts.append(f"{image_count} images")
 
+            if pdf_count > 0:
+                if pdf_count == 1:
+                    context_parts.append("1 PDF")
+                else:
+                    context_parts.append(f"{pdf_count} PDFs")
+
             if context_parts:
                 token_display = f" ({', '.join(context_parts)})"
             else:
                 token_display = ""
 
             # Fun, dynamic messages to improve UX
-            task_description = random.choice(get_creative_message(self.model, token_display, image_count > 0))
+            task_description = random.choice(
+                get_creative_message(
+                    self.model, token_display, image_count > 0, pdf_count > 0
+                )
+            )
             task = progress.add_task(task_description, total=None)
 
             # Prepare API call arguments

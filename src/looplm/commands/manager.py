@@ -45,12 +45,14 @@ class CommandManager:
         from .folder_command import FolderProcessor
         from .github_command import GithubProcessor
         from .image_command import ImageProcessor
+        from .pdf_command import PDFProcessor
 
         # Register default processors
         self.registry.register(FileProcessor)
         self.registry.register(FolderProcessor)
         self.registry.register(GithubProcessor)
         self.registry.register(ImageProcessor)
+        self.registry.register(PDFProcessor)
         # Note: ShellCommandProcessor is not explicitly registered as an @ command
         # but is used internally by the registry for handling $() commands
 
@@ -91,9 +93,9 @@ class CommandManager:
             text: Input text containing commands
 
         Returns:
-            Tuple of (processed_text, image_metadata)
+            Tuple of (processed_text, media_metadata)
                 - processed_text: Text with command outputs
-                - image_metadata: List of image metadata for vision models
+                - media_metadata: List of media metadata for vision/document models
 
         Raises:
             Exception: If command processing fails
@@ -107,9 +109,9 @@ class CommandManager:
             text: Input text containing commands
 
         Returns:
-            Tuple of (processed_text, image_metadata)
+            Tuple of (processed_text, media_metadata)
                 - processed_text: Text with command outputs
-                - image_metadata: List of image metadata for vision models
+                - media_metadata: List of media metadata for vision/document models
 
         Raises:
             Exception: If command processing fails
