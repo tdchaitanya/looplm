@@ -1,4 +1,5 @@
 # src/looplm/commands/image_command.py
+import base64
 import mimetypes
 import os
 from pathlib import Path
@@ -137,11 +138,42 @@ class ImageProcessor(CommandProcessor):
                 content="", error=f"Unsupported image format: {path.suffix}"
             )
 
-        # Get the mime type for the image
-        mime_type = (
-            mimetypes.guess_type(file_path)[0] or f"image/{path.suffix.lstrip('.')}"
-        )
-        return self._format_image_content(file_path, file_path, mime_type)
+        try:
+            # Encode local image to base64
+            base64_image = self._encode_image(file_path)
+
+            # Get the mime type for the image
+            mime_type = (
+                mimetypes.guess_type(file_path)[0] or f"image/{path.suffix.lstrip('.')}"
+            )
+
+            # Create data URL
+            data_url = f"data:{mime_type};base64,{base64_image}"
+
+            return self._format_image_content(file_path, data_url, mime_type)
+
+        except Exception as e:
+            return ProcessingResult(
+                content="", error=f"Error processing local image: {str(e)}"
+            )
+
+    def _encode_image(self, image_path: str) -> str:
+        """Encode image to base64 string
+
+        Args:
+            image_path: Path to the image file
+
+        Returns:
+            str: Base64 encoded image string
+
+        Raises:
+            Exception: If there's an error reading or encoding the image
+        """
+        try:
+            with open(image_path, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode("utf-8")
+        except Exception as e:
+            raise Exception(f"Failed to encode image {image_path}: {str(e)}")
 
     def _format_image_content(
         self, path: str, image_url: str, mime_type: Optional[str] = None
