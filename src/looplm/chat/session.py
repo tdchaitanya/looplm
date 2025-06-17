@@ -1,6 +1,7 @@
 # src/looplm/chat/session.py - Updated for new command system
 
 import os
+import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -105,6 +106,87 @@ class Message:
             name=data.get("name"),
         )
 
+
+ # Enhanced creative messages
+def get_creative_message(model_name, token_display, has_images=False):
+    if has_images:
+        creative_messages = [
+            f"🖼️ Analyzing visuals with {model_name}{token_display}...",                                                   
+            f"👁️ Looking at images through {model_name}{token_display}...",                                                
+            f"🎨 Processing visual content via {model_name}{token_display}...",
+            f"📸 Examining images with {model_name}{token_display}...",
+            f"🔍 Visual analysis in progress with {model_name}{token_display}...",
+            f"🌅 Reading pixels and text via {model_name}{token_display}...",
+            f"🎭 Interpreting visual stories with {model_name}{token_display}...",
+            f"🖼️ Decoding images and text through {model_name}{token_display}...",                                         
+        ]
+    else:
+        creative_messages = [
+                # Thoughtful/Contemplative
+                f"🤔 Pondering with {model_name}{token_display}...",
+                f"🧠 Deep thinking via {model_name}{token_display}...",
+                f"💭 Brewing thoughts using {model_name}{token_display}...",
+                f"🎯 Crafting response with {model_name}{token_display}...",
+                f"🔍 Exploring possibilities with {model_name}{token_display}...",
+                f"🔮 Consulting the AI oracle {model_name}{token_display}...",
+                f"✨ Weaving digital magic via {model_name}{token_display}...",
+                f"🪄 Conjuring wisdom through {model_name}{token_display}...",
+                f"🌟 Channeling cosmic knowledge from {model_name}{token_display}...",
+                f"🎨 Painting words via {model_name}{token_display}...",
+                f"🎭 Performing linguistic theatre with {model_name}{token_display}...",
+                f"🎼 Composing a response using {model_name}{token_display}...",
+                f"📝 Scribing wisdom through {model_name}{token_display}...",
+                f"⚡ Sparking neural networks in {model_name}{token_display}...",
+                f"🚀 Launching query to {model_name}{token_display}...",
+                f"⚙️ Processing magic through {model_name}{token_display}...",
+                f"🔥 Igniting synapses in {model_name}{token_display}...",
+                f"🤖 Having a chat with {model_name}{token_display}...",
+                f"🎪 Putting on a thinking show via {model_name}{token_display}...",
+                f"🎲 Rolling the dice of wisdom with {model_name}{token_display}...",
+                f"🎈 Floating ideas through {model_name}{token_display}...",
+                f"⏳ Traveling through time and tokens with {model_name}{token_display}...",
+                f"🗺️ Mapping out the perfect response via {model_name}{token_display}...",
+                f"🧭 Navigating the knowledge seas with {model_name}{token_display}...",
+                f"👨‍🍳 Cooking up something special with {model_name}{token_display}...",
+                f"🍳 Whisking up wisdom via {model_name}{token_display}...",
+                f"🦋 Letting thoughts bloom via {model_name}{token_display}...",
+                f"🌊 Riding the waves of knowledge with {model_name}{token_display}...",
+            ]
+    
+    return creative_messages
+
+
+def analyze_message_content(messages):
+    """Analyze messages to count text tokens and images"""
+    text_content = []
+    image_count = 0
+
+    for msg in messages:
+        content = msg.get("content")
+        if not content:
+            continue
+
+        if isinstance(content, str):
+            text_content.append(content)
+        elif isinstance(content, list):
+            # Vision content - extract text and count images
+            for item in content:
+                if isinstance(item, dict):
+                    if item.get("type") == "text":
+                        text_value = item.get("text", "")
+                        # Ensure we don't add None values
+                        if text_value is not None:
+                            text_content.append(text_value)
+                    elif item.get("type") == "image_url":
+                        image_count += 1
+
+    # Estimate text tokens
+    # Filter out any None values that might have slipped through
+    text_content = [text for text in text_content if text is not None]
+    all_text = " ".join(text_content)
+    estimated_tokens = len(all_text) // 4
+
+    return estimated_tokens, image_count
 
 @dataclass
 class ChatSession:
@@ -540,7 +622,9 @@ class ChatSession:
                 last_message = messages[-1]
                 if last_message["role"] == "user":
                     # Create new content list with text and images
-                    content_list = [{"type": "text", "text": processed_content}]
+                    # Ensure processed_content is not None
+                    text_content = processed_content if processed_content is not None else ""
+                    content_list = [{"type": "text", "text": text_content}]
 
                     # Add each image
                     for img in image_metadata:
@@ -565,7 +649,7 @@ class ChatSession:
 
             error_message = escape(str(e))
             raise Exception(f"Error sending message: {error_message}")
-
+        
     def _handle_response_with_progress(
         self,
         model: str,
@@ -588,56 +672,35 @@ class ChatSession:
             console=self.console,
             transient=True,
         ) as progress:
-            # Create dynamic task description with model info and context
-            # Estimate input tokens roughly (4 chars per token is a common approximation)
-            input_content = " ".join(
-                [msg["content"] or "" for msg in messages if msg.get("content")]
-            )
-            estimated_input_tokens = len(input_content) // 4
 
-            if estimated_input_tokens > 1000:
-                token_display = f" (~{estimated_input_tokens//1000}K tokens)"
-            elif estimated_input_tokens > 0:
-                token_display = f" (~{estimated_input_tokens} tokens)"
+            # input_content = " ".join([
+            #     msg["content"] if isinstance(msg["content"], str) else str(msg["content"])
+            #     for msg in messages
+            #     if msg.get("content")
+            # ])
+            # Create dynamic task description with model info and context
+            estimated_tokens, image_count = analyze_message_content(messages)
+
+            # Build context display
+            context_parts = []
+            if estimated_tokens > 1000:
+                context_parts.append(f"~{estimated_tokens//1000}K tokens")
+            elif estimated_tokens > 0:
+                context_parts.append(f"~{estimated_tokens} tokens")
+
+            if image_count > 0:
+                if image_count == 1:
+                    context_parts.append("1 image")
+                else:
+                    context_parts.append(f"{image_count} images")
+
+            if context_parts:
+                token_display = f" ({', '.join(context_parts)})"
             else:
                 token_display = ""
 
             # Fun, dynamic messages to improve UX
-            import random
-
-            creative_messages = [
-                # Thoughtful/Contemplative
-                f"🤔 Pondering with {self.model}{token_display}...",
-                f"🧠 Deep thinking via {self.model}{token_display}...",
-                f"💭 Brewing thoughts using {self.model}{token_display}...",
-                f"🎯 Crafting response with {self.model}{token_display}...",
-                f"🔍 Exploring possibilities with {self.model}{token_display}...",
-                f"🔮 Consulting the AI oracle {self.model}{token_display}...",
-                f"✨ Weaving digital magic via {self.model}{token_display}...",
-                f"🪄 Conjuring wisdom through {self.model}{token_display}...",
-                f"🌟 Channeling cosmic knowledge from {self.model}{token_display}...",
-                f"🎨 Painting words via {self.model}{token_display}...",
-                f"🎭 Performing linguistic theatre with {self.model}{token_display}...",
-                f"🎼 Composing a response using {self.model}{token_display}...",
-                f"📝 Scribing wisdom through {self.model}{token_display}...",
-                f"⚡ Sparking neural networks in {self.model}{token_display}...",
-                f"🚀 Launching query to {self.model}{token_display}...",
-                f"⚙️ Processing magic through {self.model}{token_display}...",
-                f"🔥 Igniting synapses in {self.model}{token_display}...",
-                f"🤖 Having a chat with {self.model}{token_display}...",
-                f"🎪 Putting on a thinking show via {self.model}{token_display}...",
-                f"🎲 Rolling the dice of wisdom with {self.model}{token_display}...",
-                f"🎈 Floating ideas through {self.model}{token_display}...",
-                f"⏳ Traveling through time and tokens with {self.model}{token_display}...",
-                f"🗺️ Mapping out the perfect response via {self.model}{token_display}...",
-                f"🧭 Navigating the knowledge seas with {self.model}{token_display}...",
-                f"👨‍🍳 Cooking up something special with {self.model}{token_display}...",
-                f"🍳 Whisking up wisdom via {self.model}{token_display}...",
-                f"🦋 Letting thoughts bloom via {self.model}{token_display}...",
-                f"🌊 Riding the waves of knowledge with {self.model}{token_display}...",
-            ]
-
-            task_description = random.choice(creative_messages)
+            task_description = random.choice(get_creative_message(self.model, token_display, image_count > 0))
             task = progress.add_task(task_description, total=None)
 
             # Prepare API call arguments
