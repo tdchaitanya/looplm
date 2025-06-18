@@ -641,10 +641,28 @@ class LoopLMChat(App):
             self.current_session.provider.value
         )
 
-        # Add user message to session
+        # Add user message to session - store with structured content if we have media
         from .session import Message
 
-        user_msg = Message("user", processed_content)
+        if media_metadata:
+            # Create structured content with text and media
+            text_content = processed_content if processed_content is not None else ""
+            content_list = [{"type": "text", "text": text_content}]
+
+            # Add media metadata to content
+            for media in media_metadata:
+                if media.get("type") == "image_url":
+                    content_list.append(media)
+                elif media.get("type") == "file_url":
+                    content_list.append(
+                        media["file_data"]
+                    )  # Extract file_data for PDFs
+
+            user_msg = Message("user", content_list)
+        else:
+            # Regular text-only message
+            user_msg = Message("user", processed_content)
+
         self.current_session.messages.append(user_msg)
 
         # Prepare model name (same logic as in session.py)
@@ -687,7 +705,7 @@ class LoopLMChat(App):
         else:
             messages = self.current_session.get_messages_for_api()
 
-        # Handle media (images and PDFs) if needed
+        # Handle media warnings for unsupported models
         if media_metadata:
             try:
                 import litellm
@@ -696,22 +714,55 @@ class LoopLMChat(App):
                 model_supports_vision = litellm.supports_vision(model=actual_model)
                 model_supports_pdf = supports_pdf_input(model=actual_model)
 
-                if (model_supports_vision or model_supports_pdf) and messages:
+                # Warn about unsupported media types
+                images = [
+                    media
+                    for media in media_metadata
+                    if media.get("type") == "image_url"
+                ]
+                pdfs = [
+                    media for media in media_metadata if media.get("type") == "file_url"
+                ]
+
+                if images and not model_supports_vision:
+                    print(
+                        f"Warning: Model {actual_model} does not support vision input. Images will be ignored."
+                    )
+                if pdfs and not model_supports_pdf:
+                    print(
+                        f"Warning: Model {actual_model} does not support PDF input. PDFs will be ignored."
+                    )
+
+                # Filter content for unsupported models (structured content is already in the message)
+                if messages and not model_supports_vision and not model_supports_pdf:
+                    # Convert structured content back to text only for unsupported models
                     last_message = messages[-1]
-                    if last_message["role"] == "user":
-                        content_list = [{"type": "text", "text": processed_content}]
-
-                        # Separate media by type and add if supported
-                        for media in media_metadata:
-                            if (
-                                media.get("type") == "image_url"
-                                and model_supports_vision
-                            ):
-                                content_list.append(media)
-                            elif media.get("type") == "file_url" and model_supports_pdf:
-                                content_list.append(media["file_data"])
-
-                        last_message["content"] = content_list
+                    if last_message["role"] == "user" and isinstance(
+                        last_message["content"], list
+                    ):
+                        # Extract just the text portion
+                        text_parts = []
+                        for item in last_message["content"]:
+                            if isinstance(item, dict) and item.get("type") == "text":
+                                text_parts.append(item.get("text", ""))
+                        last_message["content"] = " ".join(text_parts)
+                elif messages and (model_supports_vision or model_supports_pdf):
+                    # Model supports media - filter out unsupported types from the structured content
+                    last_message = messages[-1]
+                    if last_message["role"] == "user" and isinstance(
+                        last_message["content"], list
+                    ):
+                        filtered_content = []
+                        for item in last_message["content"]:
+                            if isinstance(item, dict):
+                                item_type = item.get("type")
+                                if item_type == "text":
+                                    filtered_content.append(item)
+                                elif item_type == "image_url" and model_supports_vision:
+                                    filtered_content.append(item)
+                                elif item_type == "file" and model_supports_pdf:
+                                    filtered_content.append(item)
+                        last_message["content"] = filtered_content
             except Exception:
                 pass
 

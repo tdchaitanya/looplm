@@ -5,7 +5,7 @@ import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from uuid import uuid4
 
 from litellm import completion, completion_cost
@@ -63,7 +63,9 @@ class Message:
     """Represents a chat message"""
 
     role: str
-    content: str
+    content: Union[
+        str, List[Dict]
+    ]  # Support both string and structured content (text + media)
     timestamp: datetime = field(default_factory=datetime.now)
     token_usage: Optional[TokenUsage] = None
 
@@ -577,8 +579,28 @@ class ChatSession:
             # Only proceed with the LLM if command processing succeeded
             self.config_manager.load_environment(self.provider.value)
 
-            # Add user message
-            user_msg = Message("user", processed_content)
+            # Add user message - store with structured content if we have media
+            if media_metadata:
+                # Create structured content with text and media
+                text_content = (
+                    processed_content if processed_content is not None else ""
+                )
+                content_list = [{"type": "text", "text": text_content}]
+
+                # Add media metadata to content
+                for media in media_metadata:
+                    if media.get("type") == "image_url":
+                        content_list.append(media)
+                    elif media.get("type") == "file_url":
+                        content_list.append(
+                            media["file_data"]
+                        )  # Extract file_data for PDFs
+
+                user_msg = Message("user", content_list)
+            else:
+                # Regular text-only message
+                user_msg = Message("user", processed_content)
+
             self.messages.append(user_msg)
 
             # Prepare model name
@@ -652,49 +674,19 @@ class ChatSession:
             except Exception:
                 model_supports_pdf = False
 
-            # Separate media by type
-            images = []
-            pdfs = []
+            # Check for media support and warn if unsupported
             if media_metadata:
-                for media in media_metadata:
-                    if media.get("type") == "image_url":
-                        images.append(media)
-                    elif media.get("type") == "file_url":
-                        pdfs.append(media)
+                # Separate media by type for warning messages
+                images = [
+                    media
+                    for media in media_metadata
+                    if media.get("type") == "image_url"
+                ]
+                pdfs = [
+                    media for media in media_metadata if media.get("type") == "file_url"
+                ]
 
-            # If we have media and the model supports it, convert message format
-            if (images or pdfs) and (model_supports_vision or model_supports_pdf):
-                # Update the last user message to have content as an array with text and media
-                last_message = messages[-1]
-                if last_message["role"] == "user":
-                    # Create new content list with text
-                    text_content = (
-                        processed_content if processed_content is not None else ""
-                    )
-                    content_list = [{"type": "text", "text": text_content}]
-
-                    # Add images if supported
-                    if images and model_supports_vision:
-                        content_list.extend(images)
-                    elif images and not model_supports_vision:
-                        self.console.print(
-                            f"\nWarning: Model {actual_model} does not support vision input. Images will be ignored.",
-                            style="bold yellow",
-                        )
-
-                    # Add PDFs if supported
-                    if pdfs and model_supports_pdf:
-                        content_list.extend([pdf["file_data"] for pdf in pdfs])
-                    elif pdfs and not model_supports_pdf:
-                        self.console.print(
-                            f"\nWarning: Model {actual_model} does not support PDF input. PDFs will be ignored.",
-                            style="bold yellow",
-                        )
-
-                    # Replace content with the list
-                    last_message["content"] = content_list
-            elif media_metadata:
-                # We have media but model doesn't support any of it
+                # Warn about unsupported media types
                 if images and not model_supports_vision:
                     self.console.print(
                         f"\nWarning: Model {actual_model} does not support vision input. Images will be ignored.",
@@ -705,6 +697,37 @@ class ChatSession:
                         f"\nWarning: Model {actual_model} does not support PDF input. PDFs will be ignored.",
                         style="bold yellow",
                     )
+
+                # If the model doesn't support media, we need to filter the content for API calls
+                if not model_supports_vision and not model_supports_pdf:
+                    # Convert structured content back to text only for unsupported models
+                    last_message = messages[-1]
+                    if last_message["role"] == "user" and isinstance(
+                        last_message["content"], list
+                    ):
+                        # Extract just the text portion
+                        text_parts = []
+                        for item in last_message["content"]:
+                            if isinstance(item, dict) and item.get("type") == "text":
+                                text_parts.append(item.get("text", ""))
+                        last_message["content"] = " ".join(text_parts)
+                elif model_supports_vision or model_supports_pdf:
+                    # Model supports media - filter out unsupported types from the structured content
+                    last_message = messages[-1]
+                    if last_message["role"] == "user" and isinstance(
+                        last_message["content"], list
+                    ):
+                        filtered_content = []
+                        for item in last_message["content"]:
+                            if isinstance(item, dict):
+                                item_type = item.get("type")
+                                if item_type == "text":
+                                    filtered_content.append(item)
+                                elif item_type == "image_url" and model_supports_vision:
+                                    filtered_content.append(item)
+                                elif item_type == "file" and model_supports_pdf:
+                                    filtered_content.append(item)
+                        last_message["content"] = filtered_content
 
             # Always use the unified response handler with progress animation
             return self._handle_response_with_progress(
@@ -1135,8 +1158,8 @@ class ChatSession:
             "compact_index": self.compact_index,
         }
 
-    def get_messages_for_api(self) -> List[Dict[str, str]]:
-        """Get messages in format needed for API calls - only role and content."""
+    def get_messages_for_api(self) -> List[Dict]:
+        """Get messages in format needed for API calls - supports both string and structured content."""
         if self.is_compacted:
             msgs = []
             # System prompt
@@ -1149,13 +1172,17 @@ class ChatSession:
             if self.compact_index is not None:
                 for msg in self.messages[self.compact_index :]:
                     if msg.role != "system":
-                        msgs.append({"role": msg.role, "content": msg.content or ""})
+                        # Support both string and structured content
+                        content = msg.content if msg.content is not None else ""
+                        msgs.append({"role": msg.role, "content": content})
             return msgs
         else:
-            return [
-                {"role": msg.role, "content": msg.content or ""}
-                for msg in self.messages
-            ]
+            msgs = []
+            for msg in self.messages:
+                # Support both string and structured content (preserves media)
+                content = msg.content if msg.content is not None else ""
+                msgs.append({"role": msg.role, "content": content})
+            return msgs
 
     def get_messages_for_api_with_tools(self) -> List[Dict]:
         """Get messages in format needed for API calls including tool calls and responses."""
@@ -1171,7 +1198,9 @@ class ChatSession:
             if self.compact_index is not None:
                 for msg in self.messages[self.compact_index :]:
                     if msg.role != "system":
-                        msg_dict = {"role": msg.role, "content": msg.content or ""}
+                        # Support both string and structured content (preserves media)
+                        content = msg.content if msg.content is not None else ""
+                        msg_dict = {"role": msg.role, "content": content}
                         if hasattr(msg, "tool_calls") and msg.tool_calls:
                             msg_dict["tool_calls"] = msg.tool_calls
                         if hasattr(msg, "tool_call_id") and msg.tool_call_id:
@@ -1183,7 +1212,9 @@ class ChatSession:
         else:
             msgs = []
             for msg in self.messages:
-                msg_dict = {"role": msg.role, "content": msg.content or ""}
+                # Support both string and structured content (preserves media)
+                content = msg.content if msg.content is not None else ""
+                msg_dict = {"role": msg.role, "content": content}
                 if hasattr(msg, "tool_calls") and msg.tool_calls:
                     msg_dict["tool_calls"] = msg.tool_calls
                 if hasattr(msg, "tool_call_id") and msg.tool_call_id:
